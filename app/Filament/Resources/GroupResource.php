@@ -2,11 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
+use App\Filament\Resources\GroupResource\Pages;
+use App\Filament\Resources\GroupResource\RelationManagers;
 use App\Models\Group;
-use App\Models\Role;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -14,18 +12,12 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Radio;
 
-class UserResource extends Resource
+class GroupResource extends Resource 
 {
-    protected static ?string $model = User::class;
-
-    protected static ?string $navigationLabel = 'Operator'; // Nama di sidebar
+    protected static ?string $model = Group::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
-    protected static ?string $slug = 'operator';
-    
 
     public static function form(Form $form): Form
     {
@@ -33,16 +25,13 @@ class UserResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required(),
-                Forms\Components\TextInput::make('email')
+                Forms\Components\TextInput::make('koin')
+                    ->default(0)
                     ->required(),
-                Forms\Components\TextInput::make('password'),
-                Forms\Components\Select::make('roles')
-                    ->relationship('roles', 'name'),
-                Forms\Components\Select::make('group_id')
-                    ->relationship('group', 'name')
+                Forms\Components\TextInput::make('saldo')
+                    ->default(0)
                     ->required(),
-             
-                
+                //
             ]);
     }
 
@@ -52,9 +41,8 @@ class UserResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('group.name')->label('Group'),
+                Tables\Columns\TextColumn::make('koin')->numeric(locale: 'id'),
+                Tables\Columns\TextColumn::make('saldo')->numeric(locale: 'id'),
             ])
             ->filters([
                 //
@@ -79,9 +67,9 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
-            'edit' => Pages\EditUser::route('/{record}/edit'),
+            'index' => Pages\ListGroups::route('/'),
+            'create' => Pages\CreateGroup::route('/create'),
+            'edit' => Pages\EditGroup::route('/{record}/edit'),
         ];
     }
 }

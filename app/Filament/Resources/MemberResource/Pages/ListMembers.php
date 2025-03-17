@@ -16,4 +16,15 @@ class ListMembers extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
+    protected function getHeaderWidgets(): array
+    {
+        if (auth()->check() && auth()->user()->group_id > 0) {
+            return [
+                MemberResource\Widgets\GroupStat::class,
+            ];
+        }
+    
+        return [];
+    }
 }

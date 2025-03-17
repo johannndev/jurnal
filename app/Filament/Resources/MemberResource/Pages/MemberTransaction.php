@@ -74,6 +74,7 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
             TextColumn::make('created_at')->label('Tanggal')->searchable(),
             TextColumn::make('operator.name')->label('Operator'),
             TextColumn::make('member.username')->label('username'),
+            TextColumn::make('bank.label')->label('Rek. Depo'),
             TextColumn::make('deposit')->label('Deposit')->numeric(locale: 'id'),
             TextColumn::make('withdraw')->label('Withdraw')->numeric(locale: 'id'),
             TextColumn::make('note')->label('Note'),

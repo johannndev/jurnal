@@ -7,6 +7,8 @@ use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use App\Filament\Resources\MemberResource;
 use App\Models\Bank;
+use App\Models\Group;
+use App\Models\Koinhistory;
 use App\Models\Transaction;
 use App\Models\Member;
 use App\Models\User;
@@ -70,16 +72,35 @@ class MemberTransactionCreate extends Page
             ]);
 
             $bank = Bank::find($this->bank_id);
-            $operator = User::find(Auth::id());
+            $group = Group::find( $this->member->group_id);
 
             if ($this->type === 'deposit') {
                 $bank->increment('saldo', $this->total);
-                $operator->decrement('koin', $this->total);
+                $group->decrement('koin', $this->total);
+                $group->increment('saldo', $this->total);
+
+                $koin = -$this->total;
+
             } elseif ($this->type === 'withdraw') {
                 $bank->decrement('saldo', $this->total);
-                $operator->increment('koin', $this->total);
+                $group->increment('koin', $this->total);
+                $group->decrement('saldo', $this->total);
+                
+                $koin = $this->total;
             }
+
+            $history = Koinhistory::create([
+                'group_id' => $this->member->group_id,
+                'keterangan' => $this->type,
+                'member_id' => $this->member->id,
+                'koin' => $koin,
+                'saldo' => $group->saldo,
+                'operator_id' => $this->operator,
+                
+            ]);
         });
+
+       
 
         Notification::make()
             ->title('Transaksi berhasil ditambahkan!')
@@ -97,7 +118,7 @@ class MemberTransactionCreate extends Page
                 ->schema([
                     Forms\Components\Select::make('bank_id')
                         ->label('Rekening Depo')
-                        ->options(Bank::pluck('bank_name', 'id')) 
+                        ->options(Bank::pluck('label', 'id')) 
                         ->required(),
                     Forms\Components\TextInput::make('amount')
                         ->numeric()

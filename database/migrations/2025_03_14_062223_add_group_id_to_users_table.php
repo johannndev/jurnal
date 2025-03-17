@@ -11,16 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('members', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('username');
-            $table->string('phone');
-            $table->string('bank_name');
-            $table->string('bank_number');
+        Schema::table('users', function (Blueprint $table) {
             $table->foreignId('group_id')->nullable()->constrained('groups')->onDelete('set null');
-            $table->integer('saldo')->default(0);
-            $table->timestamps();
         });
     }
 
@@ -29,6 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('members');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['group_id']);
+            $table->dropColumn('group_id');
+        });
     }
 };

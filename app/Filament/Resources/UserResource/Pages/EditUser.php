@@ -10,6 +10,11 @@ class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
 
+    public function getTitle(): string
+    {
+        return 'Edit Operator'; // Ubah heading di halaman user
+    }
+
     protected function getHeaderActions(): array
     {
         return [

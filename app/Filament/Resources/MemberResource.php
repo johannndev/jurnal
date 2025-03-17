@@ -35,12 +35,27 @@ class MemberResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('bank_number')
                     ->required(),
+                Forms\Components\Select::make('group_id')
+                    ->relationship('group', 'name')
+                    ->hidden(fn () => auth()->user()->group_id > 0)
+                    ->required(),
             ]);
     }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return parent::getEloquentQuery()->when($user->group_id > 0, function ($query) use ($user) {
+            return $query->where('group_id', $user->group_id);
+        });
+    }
+
 
     public static function table(Table $table): Table
     {
         return $table
+        
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
@@ -49,8 +64,8 @@ class MemberResource extends Resource
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_name'),
-                Tables\Columns\TextColumn::make('bank_number')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('bank_number'),
+                Tables\Columns\TextColumn::make('group.name')->label('Group'),
                 
             ])
             ->filters([
@@ -85,7 +100,17 @@ class MemberResource extends Resource
             'create' => Pages\CreateMember::route('/create'),
             'edit' => Pages\EditMember::route('/{record}/edit'),
             'member-transaksi' => MemberTransaction::route('/{record}/transactions'),
-            'create-transaction' => Pages\MemberTransactionCreate::route('/{record}/transactions/create'), 
+            'create-transaction' => Pages\MemberTransactionCreate::route('/{record}/transactions/create'),
+            'koin-history' => Pages\KoinHistory::route('/transactions/koin-history'),  
         ];
     }
+
+    public static function getWidgets(): array
+    {
+        return [
+            MemberResource\Widgets\GroupStat::class,
+        ];
+    }
+
+   
 }

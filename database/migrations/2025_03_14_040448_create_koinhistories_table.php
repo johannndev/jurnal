@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('members', function (Blueprint $table) {
+        Schema::create('koinhistories', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('username');
-            $table->string('phone');
-            $table->string('bank_name');
-            $table->string('bank_number');
             $table->foreignId('group_id')->nullable()->constrained('groups')->onDelete('set null');
-            $table->integer('saldo')->default(0);
+            $table->string('keterangan');
+            $table->integer('member_id');
+            $table->integer('koin');
+            $table->integer('saldo');
+            $table->foreignId('operator_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
     }
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('members');
+        Schema::dropIfExists('koinhistories');
     }
 };

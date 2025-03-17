@@ -11,13 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('banks', function (Blueprint $table) {
+        Schema::create('banknames', function (Blueprint $table) {
             $table->id();
-            $table->text('label')->nullable();
-            $table->string('bank_name');
-            $table->string('bank_account_name');
-            $table->string('bank_number');
-            $table->integer('saldo')->default(0);
             $table->timestamps();
         });
     }
@@ -27,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('banks');
+        Schema::dropIfExists('banknames');
     }
 };
