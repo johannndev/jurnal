@@ -23,7 +23,15 @@ class BankResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('bank_name')
+                Forms\Components\Select::make('bankname_id')
+                    ->relationship('bankname', 'bank_nama')
+                    ->label('Bank')
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('bank_nama')
+                            ->required()
+                            ->maxLength(255),
+                      
+                    ])
                     ->required(),
                 Forms\Components\TextInput::make('bank_account_name')
                     ->required(),
@@ -36,7 +44,8 @@ class BankResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('bank_name')
+                Tables\Columns\TextColumn::make('bankname.bank_nama')
+                    ->label('Bank')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_account_name')
                     ->searchable(),

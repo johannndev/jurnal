@@ -12,7 +12,7 @@ class CreateBank extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->record->label = $this->record->bank_name."/".$this->record->bank_number."/".$this->record->bank_account_name;
+        $this->record->label = $this->record->bankname->bank_nama."/".$this->record->bank_number."/".$this->record->bank_account_name;
         $this->record->save();
 
        

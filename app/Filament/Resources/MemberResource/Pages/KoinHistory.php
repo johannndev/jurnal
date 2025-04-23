@@ -25,10 +25,10 @@ class KoinHistory extends Page implements Tables\Contracts\HasTable
     
         if ($user && $user->group_id > 0) {
 
-            $dataList = ModelsKoinhistory::query()->where('group_id',$user->group_id);
+            $dataList = ModelsKoinhistory::query()->where('group_id',$user->group_id)->orderBy('created_at', 'desc');
 
         }else{
-            $dataList = ModelsKoinhistory::query();
+            $dataList = ModelsKoinhistory::query()->orderBy('created_at', 'desc');
         }
 
         return $dataList;

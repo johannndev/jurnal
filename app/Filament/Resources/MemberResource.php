@@ -68,6 +68,7 @@ class MemberResource extends Resource
                 Tables\Columns\TextColumn::make('group.name')->label('Group'),
                 
             ])
+            ->defaultSort('created_at', 'desc') 
             ->filters([
                 //
             ])
