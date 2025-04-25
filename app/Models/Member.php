@@ -16,6 +16,11 @@ class Member extends Model
         return $this->hasOne(Member::class);
     }
 
+    public function log(): HasOne
+    {
+        return $this->hasOne(Logtransaksi::class);
+    }
+
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);

@@ -9,6 +9,7 @@ use App\Filament\Resources\MemberResource;
 use App\Models\Bank;
 use App\Models\Group;
 use App\Models\Koinhistory;
+use App\Models\Logtransaksi;
 use App\Models\Transaction;
 use App\Models\Member;
 use App\Models\User;
@@ -44,6 +45,7 @@ class MemberTransactionCreate extends Page
         $this->type = request()->query('type'); 
         $this->operator =  Auth::id();
     }
+    
 
     public function save()
     {
@@ -71,8 +73,8 @@ class MemberTransactionCreate extends Page
                 'withdraw' => $this->type === 'withdraw' ? $this->amount : 0,
             ]);
 
-            $bank = Bank::find($this->bank_id);
-            $group = Group::find( $this->member->group_id);
+            $bank = Bank::where('id', $this->bank_id)->lockForUpdate()->first();
+            $group = Group::where('id', $this->member->group_id)->lockForUpdate()->first();
 
             if ($this->type === 'deposit') {
                 $bank->increment('saldo', $this->total);
@@ -97,6 +99,18 @@ class MemberTransactionCreate extends Page
                 'saldo' => $group->saldo,
                 'operator_id' => $this->operator,
                 
+            ]);
+
+            $log = Logtransaksi::create([
+                'operator_id' =>  $transaction->operator_id,
+                'bank_id' =>  $transaction->bank_id,
+                'type_transaksi' => 'TR',
+                'type' =>  $transaction->type,
+                'rekenin_name' => $bank->label,
+                'deposit' => $transaction->type === 'deposit' ? $transaction->total : 0,
+                'withdraw' => $transaction->type === 'withdraw' ? $transaction->total : 0,
+                'saldo' => $bank->saldo,
+                'note' =>  $this->member->name,
             ]);
         });
 

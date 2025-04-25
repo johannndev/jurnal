@@ -33,7 +33,7 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
 
     protected function getTableQuery()
     {
-        return Transaction::query()->where('member_id', $this->userId)->orderBy('created_at', 'desc');;
+        return Transaction::query()->where('member_id', $this->userId)->orderBy('created_at', 'desc');
     }
 
     protected function calculateBalance(): void

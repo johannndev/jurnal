@@ -3,8 +3,21 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BankResource\Pages;
+use App\Filament\Resources\BankResource\Pages\CreateAdjustment;
+use App\Filament\Resources\BankResource\Pages\CreateInOut;
+use App\Filament\Resources\BankResource\Pages\CreatePindahDana;
+use App\Filament\Resources\BankResource\Pages\HistoryLogBank;
+use App\Filament\Resources\BankResource\Pages\LogAdjustment;
+use App\Filament\Resources\BankResource\Pages\LogExpanses;
+use App\Filament\Resources\BankResource\Pages\LogIncome;
+use App\Filament\Resources\BankResource\Pages\LogPindahDana;
 use App\Filament\Resources\BankResource\RelationManagers;
+use App\Filament\Resources\BankResource\Widgets\BankSummaryWidget;
+use App\Filament\Resources\BankResource\Widgets\BankTotalBalance;
 use App\Models\Bank;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -58,6 +71,25 @@ class BankResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                ActionGroup::make([
+                    Action::make('history_rekening')
+                        ->url(fn ($record) => BankResource::getUrl('history', ['record' => $record]))
+                        ->label('History Rekening'),
+                    Action::make('pindah_dana_log')
+                        ->label('Input Pindah Dana')
+                        ->url(fn ($record) => BankResource::getUrl('createPindahDana', ['record' => $record])),
+                    Action::make('ei_input')
+                        ->label('Input Expanse/Income')
+                        ->url(fn ($record) => BankResource::getUrl('createInOut', ['record' => $record])),
+   
+                    Action::make('adjust_input')
+                        ->label('Input Adjustment')
+                        ->url(fn ($record) => BankResource::getUrl('createAdjustment', ['record' => $record])),
+                       
+                    
+                        
+                          
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -79,6 +111,14 @@ class BankResource extends Resource
             'index' => Pages\ListBanks::route('/'),
             'create' => Pages\CreateBank::route('/create'),
             'edit' => Pages\EditBank::route('/{record}/edit'),
+            'history' => HistoryLogBank::route('/{record}/history'),
+            'createPindahDana' => CreatePindahDana::route('/{record}/pindah-dana/create'),
+            'createInOut' => CreateInOut::route('/{record}/expanse-income/create'),
+            'createAdjustment' => CreateAdjustment::route('/{record}/adjustment/create'),
+            'logPindahDana' => LogPindahDana::route('/pindah-dana/log'),
+            'logExpanses' => LogExpanses::route('/expanses/log'),
+            'logIncome' => LogIncome::route('/income/log'),
+            'logAdjustment' => LogAdjustment::route('/adjustment/log'),
         ];
     }
 
@@ -92,6 +132,14 @@ class BankResource extends Resource
             'delete',
             'delete_any',
             'publish'
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            BankTotalBalance::class,
+            BankSummaryWidget::class
         ];
     }
 }
