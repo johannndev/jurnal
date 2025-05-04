@@ -14,6 +14,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
 
 class HistoryLogBank extends Page implements Tables\Contracts\HasTable
@@ -24,6 +25,12 @@ class HistoryLogBank extends Page implements Tables\Contracts\HasTable
 
     protected static string $view = 'filament.resources.bank-resource.pages.history-log-bank';
 
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('history_bank');
+    }
+
+   
     public Bank $record;
 
     public function mount(Bank $record): void
@@ -80,4 +87,6 @@ class HistoryLogBank extends Page implements Tables\Contracts\HasTable
                 }),
         ];
     }
+
+  
 }

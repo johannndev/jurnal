@@ -20,6 +20,11 @@ class CreateInOut extends Page
 
     protected static ?string $title = 'Expanses/Income';
 
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('create_expanse_income_bank');
+    }
+
     public Bank $bank;
 
     public ?int $amount = 0;

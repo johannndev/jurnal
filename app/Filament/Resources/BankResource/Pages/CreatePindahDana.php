@@ -18,6 +18,11 @@ class CreatePindahDana extends Page
 
     protected static string $view = 'filament.resources.bank-resource.pages.create-pindah-dana';
 
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('create_pindah_dana_bank');
+    }
+
     public Bank $bank;
 
     public ?float $amount = 0;

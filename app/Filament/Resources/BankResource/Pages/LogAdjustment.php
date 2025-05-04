@@ -20,6 +20,11 @@ class LogAdjustment extends Page implements Tables\Contracts\HasTable
 
     protected static string $view = 'filament.resources.bank-resource.pages.log-adjustment';
 
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('log_adjutment_bank');
+    }
+
     protected function getTableQuery()
     {
         return Logtransaksi::query()

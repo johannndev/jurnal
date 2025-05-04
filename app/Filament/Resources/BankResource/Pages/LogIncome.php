@@ -18,6 +18,11 @@ class LogIncome extends Page implements Tables\Contracts\HasTable
     protected static string $resource = BankResource::class;
 
     protected static string $view = 'filament.resources.bank-resource.pages.log-income';
+
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('log_income_bank');
+    }
     
     protected function getTableQuery()
     {

@@ -21,6 +21,11 @@ class LogExpanses extends  Page implements Tables\Contracts\HasTable
 
     protected static string $view = 'filament.resources.bank-resource.pages.log-expanses';
 
+    public static function canAccess(array $parameter = []):bool
+    {
+        return auth()->user()?->can('log_expanse_bank');
+    }
+
     protected function getTableQuery()
     {
         return Logtransaksi::query()

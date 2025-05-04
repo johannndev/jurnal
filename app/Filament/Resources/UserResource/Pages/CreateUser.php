@@ -14,4 +14,9 @@ class CreateUser extends CreateRecord
     {
         return 'Create Operator'; // Ubah heading di halaman user
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

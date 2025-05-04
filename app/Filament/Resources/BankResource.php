@@ -15,6 +15,7 @@ use App\Filament\Resources\BankResource\RelationManagers;
 use App\Filament\Resources\BankResource\Widgets\BankSummaryWidget;
 use App\Filament\Resources\BankResource\Widgets\BankTotalBalance;
 use App\Models\Bank;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -26,7 +27,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class BankResource extends Resource
+class BankResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Bank::class;
 
@@ -57,13 +58,14 @@ class BankResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('label'),
                 Tables\Columns\TextColumn::make('bankname.bank_nama')
                     ->label('Bank')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_account_name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_number'),
-                Tables\Columns\TextColumn::make('saldo'),
+                Tables\Columns\TextColumn::make('saldo')->numeric(locale: 'id'),
                 
             ])
             ->filters([
@@ -129,9 +131,23 @@ class BankResource extends Resource
             'view_any',
             'create',
             'update',
+            'restore',
+            'restore_any',
+            'replicate',
+            'reorder',
             'delete',
             'delete_any',
-            'publish'
+            'force_delete',
+            'force_delete_any',
+            'history',
+            'log_pindah_dana',
+            'create_pindah_dana',
+            'log_expanse',
+            'log_income',
+            'create_expanse_income',
+            'log_adjutment',
+            'create_adjustment',
+            
         ];
     }
 
