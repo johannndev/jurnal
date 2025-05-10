@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BankResource\Pages;
 
 use App\Filament\Resources\BankResource;
+use App\Filament\Widgets\RealtimeClock;
 use Filament\Resources\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Columns\TextColumn;
@@ -72,6 +73,19 @@ class LogAdjustment extends Page implements Tables\Contracts\HasTable
                         ->when($data['start_date'], fn ($q) => $q->whereDate('created_at', '>=', $data['start_date']))
                         ->when($data['end_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['end_date']));
                 }),
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            RealtimeClock::class,
+           
         ];
     }
 }

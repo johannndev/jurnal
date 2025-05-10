@@ -1,7 +1,6 @@
 <x-filament::page>
     <div class="space-y-4">
-        <h2 class="text-lg font-bold">Transaksi Member</h2>
-
+        
         <!-- Informasi Saldo -->
         <!-- Informasi Saldo -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

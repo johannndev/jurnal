@@ -4,6 +4,9 @@ namespace App\Filament\Resources\BankResource\Pages;
 
 use App\Filament\Resources\BankResource;
 use App\Filament\Resources\BankResource\Widgets\BankTotalBalance;
+use App\Filament\Resources\BankResource\Widgets\JamWidget;
+use App\Filament\Resources\BankResource\Widgets\SaldoWidget;
+use App\Filament\Widgets\RealtimeClock;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Actions\Action;
@@ -30,10 +33,16 @@ class ListBanks extends ListRecords
         ];
     }
 
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [
-            BankTotalBalance::class
+            RealtimeClock::class,
+            BankTotalBalance::class,
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BankResource\Pages;
 
 use App\Filament\Resources\BankResource;
 use App\Filament\Resources\BankResource\Widgets\BankSummaryWidget;
+use App\Filament\Widgets\RealtimeClock;
 use App\Models\Bank;
 use App\Models\Logtransaksi;
 use Filament\Resources\Pages\Page;
@@ -121,9 +122,12 @@ class CreateInOut extends Page
         ];
     }
 
+    
+
     protected function getHeaderWidgets(): array
     {
         return [
+            RealtimeClock::class,
             BankSummaryWidget::make([
                 'label' => $this->bank->label,
                 'saldo' => $this->bank->saldo

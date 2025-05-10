@@ -8,6 +8,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class BankTotalBalance extends BaseWidget
 {
+   
+
     protected function getStats(): array
     {
         $totalSaldo = Bank::sum('saldo');
@@ -16,4 +18,5 @@ class BankTotalBalance extends BaseWidget
             Stat::make('Total Saldo', 'Rp '.number_format($totalSaldo,0,'','.')),
         ];
     }
+    
 }

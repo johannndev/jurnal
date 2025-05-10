@@ -14,6 +14,9 @@ use App\Filament\Resources\BankResource\Pages\LogPindahDana;
 use App\Filament\Resources\BankResource\RelationManagers;
 use App\Filament\Resources\BankResource\Widgets\BankSummaryWidget;
 use App\Filament\Resources\BankResource\Widgets\BankTotalBalance;
+use App\Filament\Resources\BankResource\Widgets\JamWidget;
+use App\Filament\Resources\BankResource\Widgets\SaldoWidget;
+use App\Filament\Widgets\RealtimeClock;
 use App\Models\Bank;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Tables\Actions\ActionGroup;
@@ -150,12 +153,18 @@ class BankResource extends Resource implements HasShieldPermissions
             
         ];
     }
+    
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
 
     public static function getWidgets(): array
     {
         return [
             BankTotalBalance::class,
-            BankSummaryWidget::class
+            BankSummaryWidget::class,
+          
         ];
     }
 }

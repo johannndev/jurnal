@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BankResource\Pages;
 
 use App\Filament\Resources\BankResource;
+use App\Filament\Widgets\RealtimeClock;
 use App\Models\Bank;
 use App\Models\Logtransaksi;
 use Filament\Resources\Pages\Page;
@@ -140,6 +141,19 @@ class CreatePindahDana extends Page
 
 
                 ]),
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            RealtimeClock::class,
+           
         ];
     }
 

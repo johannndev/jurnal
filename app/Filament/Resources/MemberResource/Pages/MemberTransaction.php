@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MemberResource\Pages;
 
 use App\Filament\Resources\MemberResource;
+use App\Filament\Widgets\RealtimeClock;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
@@ -98,4 +99,20 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
             Tables\Actions\DeleteBulkAction::make(),
         ];
     }
+
+     public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            RealtimeClock::class,
+           
+        ];
+    }
+
+
+    
 }

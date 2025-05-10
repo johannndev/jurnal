@@ -22,6 +22,6 @@ class FilamentServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-      
+       
     }
 }

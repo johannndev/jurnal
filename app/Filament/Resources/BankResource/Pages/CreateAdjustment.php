@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BankResource\Pages;
 
 use App\Filament\Resources\BankResource;
 use App\Filament\Resources\BankResource\Widgets\BankSummaryWidget;
+use App\Filament\Widgets\RealtimeClock;
 use App\Models\Bank;
 use App\Models\Logtransaksi;
 use Filament\Notifications\Notification;
@@ -114,9 +115,16 @@ class CreateAdjustment extends Page
         ];
     }
 
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return 3;
+    }
+
+
     protected function getHeaderWidgets(): array
     {
         return [
+            RealtimeClock::class,
             BankSummaryWidget::make([
                 'label' => $this->bank->label,
                 'saldo' => $this->bank->saldo
