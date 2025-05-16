@@ -6,6 +6,8 @@ use Filament\Facades\Filament;
 use Filament\Navigation\NavigationItem;
 use Filament\Notifications\Notification;
 use Illuminate\Support\ServiceProvider;
+use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\Assets\Js;
 
 class FilamentServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,8 @@ class FilamentServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
+      
        
     }
 }

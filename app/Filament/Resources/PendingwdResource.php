@@ -23,6 +23,7 @@ use Filament\Tables\Actions\Action;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 
 
 class PendingwdResource extends Resource
@@ -45,38 +46,41 @@ class PendingwdResource extends Resource
                 ->columns(1) // Sesuaikan jumlah kolom agar cukup
                 ->schema([
                     Forms\Components\TextInput::make('nama_rek')
-                        ->label('Nama Rekening')
-                        ->required(),
+                            ->label('Nama Rekening')
+                            ->required(),
 
-                    Forms\Components\Select::make('bank_id')
-                        ->label('Rekening Depo')
-                        ->options(Bank::pluck('label', 'id'))
-                        ->required()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            $bank = Bank::find($state);
-                            $saldo = $bank?->saldo ?? 0;
+                       Forms\Components\Select::make('bank_id')
+                            ->label('Rekening Depo')
+                            ->required()
+                            ->options(function () {
+                                return \App\Models\Bank::all()->pluck('label', 'id');
+                            })
+                            ->extraAttributes([
+                                'id' => 'bank_id_select',
+                            ]),
 
-                            $set('saldo_awal', $saldo);
-                            $set('saldo_akhir', $saldo);
-                        }),
+                        Forms\Components\TextInput::make('nominal')
+                            ->label('Nominal')
+                            ->numeric()
+                            ->extraAttributes([
+                                'id' => 'nominal', // Tambahkan id untuk akses di JS
+                            ]),
 
-                    Forms\Components\TextInput::make('nominal')
-                        ->label('Nominal')
-                        ->numeric()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $saldoAwal = $get('saldo_awal') ?? 0;
-                            $set('saldo_akhir', $saldoAwal - $state);
-                        }),
+                        Forms\Components\TextInput::make('saldo_awal')
+                            ->label('Saldo Awal')
+                            ->disabled()
+                            ->extraAttributes([
+                                'id' => 'saldo_awal_display', // ID untuk akses di JS
+                            ]),
 
-                    Forms\Components\TextInput::make('saldo_awal')
-                        ->label('Saldo Awal')
-                        ->disabled(),
-
-                    Forms\Components\TextInput::make('saldo_akhir')
-                        ->label('Saldo Akhir')
-                        ->disabled(),
+                        Forms\Components\TextInput::make('saldo_akhir')
+                            ->label('Saldo Akhir')
+                             ->extraAttributes([
+                                'id' => 'saldo_akhir_display', // ID untuk akses di JS
+                            ])
+                            ->disabled(),
+                        Hidden::make('type')
+                            ->default('wd')
                 ])
         ]);
     }
@@ -94,13 +98,13 @@ class PendingwdResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        1 => 'warning',  // Hijau
-                        2 => 'success',  // Merah
+                        "1" => 'warning',  // Hijau
+                        "2" => 'success',  // Merah
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        1 => 'Pending',
-                        2 => 'Success',
+                        "1" => 'Pending',
+                        "2" => 'Success',
                         default => ucfirst($state),
                     }),
             ])
@@ -139,7 +143,7 @@ class PendingwdResource extends Resource
                             'note' =>  'WD Gantung',
                         ]);
                     })
-                    ->visible(fn ($record) => $record->status === 1),
+                    ->visible(fn ($record) => $record->status == 1),
 
                 Action::make('delete')
                     ->label('Hapus')

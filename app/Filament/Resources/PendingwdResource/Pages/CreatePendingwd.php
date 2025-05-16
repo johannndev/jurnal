@@ -29,6 +29,9 @@ class CreatePendingwd extends CreateRecord
 
     protected function afterCreate(): void
     {
+
+        dd($this->record);
+
         $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
 
         $group->increment('koin', $this->record->nominal);

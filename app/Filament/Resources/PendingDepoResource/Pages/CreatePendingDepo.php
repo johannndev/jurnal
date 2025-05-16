@@ -31,6 +31,7 @@ class CreatePendingDepo extends CreateRecord
 
     protected function afterCreate(): void
     {
+        
         $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
         $bank = Bank::where('id', $this->record->bank_id)->lockForUpdate()->first();
 
