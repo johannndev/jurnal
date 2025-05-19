@@ -9,7 +9,8 @@ use App\Models\Bank;
 use App\Models\Group;
 use App\Models\Koinhistory;
 use App\Models\Logtransaksi;
-use App\Models\Pending;
+use App\Models\Member;
+use App\Models\Pendingwd;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -28,7 +29,7 @@ use Filament\Forms\Components\Hidden;
 
 class PendingwdResource extends Resource
 {
-    protected static ?string $model = Pending::class;
+    protected static ?string $model = Pendingwd::class;
 
     protected static ?string $modelLabel = 'Pending Withdraw';
 
@@ -45,42 +46,60 @@ class PendingwdResource extends Resource
             Grid::make()
                 ->columns(1) // Sesuaikan jumlah kolom agar cukup
                 ->schema([
-                    Forms\Components\TextInput::make('nama_rek')
-                            ->label('Nama Rekening')
-                            ->required(),
-
-                       Forms\Components\Select::make('bank_id')
-                            ->label('Rekening Depo')
+                     Forms\Components\Select::make('member_id')
+                            ->label('User ID')
+                            ->relationship('member', 'username')
+                            ->searchable()
+                            ->preload()
                             ->required()
-                            ->options(function () {
-                                return \App\Models\Bank::all()->pluck('label', 'id');
-                            })
-                            ->extraAttributes([
-                                'id' => 'bank_id_select',
-                            ]),
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $member = Member::with('group')->where('id',$state)->first();
+                                if ($member) {
+                                    $set('username', $member->username);
+                                    $set('sitename', $member->group->name);
+                                    $set('member_name', $member->name);
+                                    $set('bank', $member->bank_name);
+                                } else {
+                                    $set('sitename', null);
+                                    $set('member_name', null);
+                                    $set('bank', null);
+                                    $set('username');
 
+                                 
+                                }
+                            }),
+
+                        Forms\Components\Select::make('bank_id')
+                            ->label('Bank')
+                            ->relationship('bank', 'label')
+                            ->preload()
+                            ->required(),
+                            
+                       
                         Forms\Components\TextInput::make('nominal')
                             ->label('Nominal')
                             ->numeric()
                             ->extraAttributes([
                                 'id' => 'nominal', // Tambahkan id untuk akses di JS
                             ]),
-
-                        Forms\Components\TextInput::make('saldo_awal')
-                            ->label('Saldo Awal')
-                            ->disabled()
-                            ->extraAttributes([
-                                'id' => 'saldo_awal_display', // ID untuk akses di JS
-                            ]),
-
-                        Forms\Components\TextInput::make('saldo_akhir')
-                            ->label('Saldo Akhir')
-                             ->extraAttributes([
-                                'id' => 'saldo_akhir_display', // ID untuk akses di JS
-                            ])
-                            ->disabled(),
-                        Hidden::make('type')
-                            ->default('wd')
+                        Forms\Components\TextInput::make('sitename')
+                            ->label('Sitename')
+                            ->disabled(fn () => true)  // tampak disable
+                            ->dehydrated(true), 
+                        Forms\Components\TextInput::make('member_name')
+                            ->label('Nama member')
+                            ->disabled(fn () => true)  // tampak disable
+                            ->dehydrated(true), 
+                        Forms\Components\TextInput::make('bank')
+                            ->label('Bank member')
+                            ->disabled(fn () => true)  // tampak disable
+                            ->dehydrated(true), 
+                        Forms\Components\TextInput::make('username')
+                            ->label('hiden')
+                            ->disabled(fn () => true)  // tampak disable
+                            ->dehydrated(true), 
+                        
                 ])
         ]);
     }
@@ -91,20 +110,23 @@ class PendingwdResource extends Resource
             ->columns([
                 TextColumn::make('created_at')->label('Waktu')->dateTime('d/m/Y H:i:s'),
                 TextColumn::make('operator.name')->label('Operator'),
-                TextColumn::make('nama_rek')->label('Nama Rekening'),
-                TextColumn::make('bank.label')->label('Rekening'),
+                TextColumn::make('bank.label')->label('Bank'),
+                TextColumn::make('sitename')->label('Sitename'),
+                TextColumn::make('member_name')->label('Nama Member'),
+                TextColumn::make('bank')->label('Bank Member'),
+                TextColumn::make('username')->label('Username'),
                 TextColumn::make('nominal')->label('Nominal'),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        "1" => 'warning',  // Hijau
-                        "2" => 'success',  // Merah
+                        1 => 'warning',  // Hijau
+                        2 => 'success',  // Merah
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        "1" => 'Pending',
-                        "2" => 'Success',
+                        1 => 'Pending',
+                        2 => 'Success',
                         default => ucfirst($state),
                     }),
             ])
@@ -121,27 +143,27 @@ class PendingwdResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi Update Status')
                     ->modalDescription('Yakin ingin mengubah status menjadi Success?')
-                    ->action(function (\App\Models\Pending $record) {
+                    ->action(function (\App\Models\Pendingwd $record) {
                         $record->update(['status' => 2]);
 
-                        $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
                         $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                        $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
 
                         $bank->decrement('saldo',  $record->nominal);
                         $group->decrement('saldo',  $record->nominal);
 
-
                         $log = Logtransaksi::create([
                             'operator_id' =>  Auth::id(),
                             'bank_id' =>  $record->bank_id,
-                            'type_transaksi' => 'WDP',
+                            'type_transaksi' => 'DPP',
                             'type' =>  'withdraw',
-                            'rekenin_name' => $record->bank->label,
+                            'rekenin_name' => $bank->label,
                             'deposit' => 0,
                             'withdraw' => $record->nominal,
                             'saldo' => $bank->saldo,
-                            'note' =>  'WD Gantung',
+                            'note' =>  'DP Gantung Refund',
                         ]);
+                       
                     })
                     ->visible(fn ($record) => $record->status == 1),
 
@@ -152,10 +174,11 @@ class PendingwdResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi delete data')
                     ->modalDescription('Yakin ingin menghapus data ini?')
-                    ->action(function (\App\Models\Pending $record) {
+                    ->action(function (\App\Models\Pendingwd $record) {
                        
-                        $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
                         $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                        $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
+                      
 
                         $group->decrement('koin', $record->nominal);
 
@@ -169,29 +192,30 @@ class PendingwdResource extends Resource
                             
                         ]);
 
-                        if( $record->type == 1 && $record->status == 2){
+                        
+                        if( $record->status == 2){
 
                             $bank->increment('saldo',  $record->nominal);
                             $group->increment('saldo',  $record->nominal);
 
-                                $log = Logtransaksi::create([
-                                    'operator_id' =>  Auth::id(),
-                                    'bank_id' =>  $record->bank_id,
-                                    'type_transaksi' => 'WDR',
-                                    'type' =>  'deposite',
-                                    'rekenin_name' => $record->bank->label,
-                                    'deposit' => $record->nominal,
-                                    'withdraw' => 0,
-                                    'saldo' => $bank->saldo,
-                                    'note' =>  'WD Gantung Refund',
-                                ]);
+                            $log = Logtransaksi::create([
+                                'operator_id' =>  Auth::id(),
+                                'bank_id' =>  $record->bank_id,
+                                'type_transaksi' => 'WDR',
+                                'type' =>  'deposit',
+                                'rekenin_name' => $bank->label,
+                                'deposit' =>  $record->nominal,
+                                'withdraw' => 0,
+                                'saldo' => $bank->saldo,
+                                'note' =>  'DP Gantung Refund',
+                            ]);
 
                              
 
-                        }else {
-
                         }
 
+                        
+                     
                         
                         $record->delete();
 
@@ -235,7 +259,6 @@ class PendingwdResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('type', 1)
             ->orderBy('created_at', 'desc');
     }
 

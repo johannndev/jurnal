@@ -10,7 +10,7 @@ class PendingDepoOverview extends BaseWidget
 {
     protected function getStats(): array
     {
-        $totalSaldo = Pending::where('type',2)->sum('nominal');
+        $totalSaldo = Pending::sum('nominal');
 
         return [
             Stat::make('Total Depo Gantung', 'Rp '.number_format($totalSaldo,0,'','.')),

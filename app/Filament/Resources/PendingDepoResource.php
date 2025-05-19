@@ -78,8 +78,7 @@ class PendingDepoResource extends Resource
                                 'id' => 'saldo_akhir_display', // ID untuk akses di JS
                             ])
                             ->disabled(),
-                        Hidden::make('type')
-                            ->default('dp')
+                      
                     ])
                 //
             ]);
@@ -159,7 +158,7 @@ class PendingDepoResource extends Resource
                             'operator_id' =>  Auth::id(),
                             'bank_id' =>  $record->bank_id,
                             'type_transaksi' => 'DPR',
-                            'type' =>  'deposit',
+                            'type' =>  'withdraw',
                             'rekenin_name' => $record->bank->label,
                             'deposit' => 0,
                             'withdraw' => $record->nominal,
@@ -169,7 +168,7 @@ class PendingDepoResource extends Resource
 
                        
 
-                        if( $record->type == 2 && $record->status == 2){
+                        if( $record->status == 2){
 
                             $group->increment('koin', $record->nominal);
 
@@ -184,8 +183,6 @@ class PendingDepoResource extends Resource
                             ]);
 
                              
-
-                        }else {
 
                         }
 
@@ -209,7 +206,6 @@ class PendingDepoResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('type', 2)
             ->orderBy('created_at', 'desc');
     }
 

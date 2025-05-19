@@ -20,8 +20,7 @@ class CreatePendingwd extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['status'] = 1;
-        $data['type'] = 1;
+      
         $data['operator_id'] = Auth::id();
 
         return $data;
@@ -30,7 +29,6 @@ class CreatePendingwd extends CreateRecord
     protected function afterCreate(): void
     {
 
-        dd($this->record);
 
         $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
 

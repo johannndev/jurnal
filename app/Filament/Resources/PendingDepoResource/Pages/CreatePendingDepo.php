@@ -22,8 +22,6 @@ class CreatePendingDepo extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['status'] = 1;
-        $data['type'] = 2;
         $data['operator_id'] = Auth::id();
 
         return $data;
@@ -42,7 +40,7 @@ class CreatePendingDepo extends CreateRecord
             'operator_id' =>  Auth::id(),
             'bank_id' =>  $this->record->bank_id,
             'type_transaksi' => 'DPP',
-            'type' =>  'deposite',
+            'type' =>  'deposit',
             'rekenin_name' => $this->record->bank->label,
             'deposit' => $this->record->nominal,
             'withdraw' => 0,
