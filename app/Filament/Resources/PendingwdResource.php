@@ -11,6 +11,7 @@ use App\Models\Koinhistory;
 use App\Models\Logtransaksi;
 use App\Models\Member;
 use App\Models\Pendingwd;
+use App\Models\Transaction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -25,7 +26,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class PendingwdResource extends Resource
 {
@@ -70,12 +72,7 @@ class PendingwdResource extends Resource
                                 }
                             }),
 
-                        Forms\Components\Select::make('bank_id')
-                            ->label('Bank')
-                            ->relationship('bank', 'label')
-                            ->preload()
-                            ->required(),
-                            
+                       
                        
                         Forms\Components\TextInput::make('nominal')
                             ->label('Nominal')
@@ -95,10 +92,7 @@ class PendingwdResource extends Resource
                             ->label('Bank member')
                             ->disabled(fn () => true)  // tampak disable
                             ->dehydrated(true), 
-                        Forms\Components\TextInput::make('username')
-                            ->label('hiden')
-                            ->disabled(fn () => true)  // tampak disable
-                            ->dehydrated(true), 
+                       
                         
                 ])
         ]);
@@ -110,63 +104,120 @@ class PendingwdResource extends Resource
             ->columns([
                 TextColumn::make('created_at')->label('Waktu')->dateTime('d/m/Y H:i:s'),
                 TextColumn::make('operator.name')->label('Operator'),
-                TextColumn::make('bank.label')->label('Bank'),
                 TextColumn::make('sitename')->label('Sitename'),
                 TextColumn::make('member_name')->label('Nama Member'),
                 TextColumn::make('bank')->label('Bank Member'),
-                TextColumn::make('username')->label('Username'),
                 TextColumn::make('nominal')->label('Nominal'),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        1 => 'warning',  // Hijau
-                        2 => 'success',  // Merah
+                        "P" => 'warning',  // Hijau
+                        "S" => 'success',  // Merah
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        1 => 'Pending',
-                        2 => 'Success',
+                        "P" => 'Pending',
+                        "S" => 'Success',
                         default => ucfirst($state),
                     }),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-               
-                  
-                Action::make('setSuccess')
-                    ->label('Set Success')
+
+              ->actions([
+                Action::make('proses')
+                    ->label('Proses')
+                    ->modalHeading('Proses Dana Gantung')
                     ->icon('heroicon-s-clipboard-document-check')
                     ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Update Status')
-                    ->modalDescription('Yakin ingin mengubah status menjadi Success?')
-                    ->action(function (\App\Models\Pendingwd $record) {
-                        $record->update(['status' => 2]);
-
-                        $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
-                        $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
-
-                        $bank->decrement('saldo',  $record->nominal);
-                        $group->decrement('saldo',  $record->nominal);
-
-                        $log = Logtransaksi::create([
-                            'operator_id' =>  Auth::id(),
-                            'bank_id' =>  $record->bank_id,
-                            'type_transaksi' => 'DPP',
-                            'type' =>  'withdraw',
-                            'rekenin_name' => $bank->label,
-                            'deposit' => 0,
-                            'withdraw' => $record->nominal,
-                            'saldo' => $bank->saldo,
-                            'note' =>  'DP Gantung Refund',
-                        ]);
+                    ->form([
+                        Forms\Components\TextInput::make('username')
+                            ->label('User ID')
+                            ->default(fn ($record) => $record->member->username)
+                            ->disabled(),
+                        Forms\Components\TextInput::make('nominal')
+                            ->label('Nominal')
+                            ->default(fn ($record) => $record->nominal)
+                            ->disabled(),
+                        Forms\Components\TextInput::make('nama_rekening')
+                            ->label('Nama Rekening')
+                            ->default(fn ($record) => $record->member->bank_name)
+                            ->disabled(),
+                        Forms\Components\TextInput::make('nomor_rekening')
+                            ->label('Nomor Rekening')
+                            ->default(fn ($record) => $record->member->bank_number)
+                            ->disabled(),
+                        Forms\Components\Select::make('wd_bank')
+                            ->label('Rekening WD')
+                            ->relationship('bank', 'label')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        Forms\Components\TextInput::make('biaya_transfer')
+                            ->label('Biaya Transfers'),
+                                    
+                    ])
+                    ->action(function (array $data, $record) {
                        
-                    })
-                    ->visible(fn ($record) => $record->status == 1),
 
+                        DB::transaction(function () use ($data, $record) {
+
+                            $total = (float) ($record->nominal + $data['biaya_transfer'] ?? 0);
+
+                            $transaction = Transaction::create([
+                                'operator_id' =>  Auth::id(),
+                                'member_id' => $record->member_id,
+                                'bank_id' => $data['wd_bank'],
+                                'total' => $total,
+                                'fee' => $data['biaya_transfer'] ?? 0,
+                                'bonus' => 0,
+                                'note' =>  null,
+                                'type' => 'withdraw',
+                                'deposit' => 0,
+                                'withdraw' => $record->nominal,
+                            ]);
+
+                            $member = Member::find($record->member_id);
+                            $bank = Bank::where('id', $data['wd_bank'])->lockForUpdate()->first();
+                            $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
+
+                            $group->decrement('saldo',  $total);
+                            $bank->decrement('saldo', $total);
+
+
+                            $koin =  $total;
+
+                            $log = Logtransaksi::create([
+                                'operator_id' =>  $transaction->operator_id,
+                                'bank_id' =>  $transaction->bank_id,
+                                'type_transaksi' => 'TR',
+                                'type' =>  $transaction->type,
+                                'rekenin_name' => $bank->label,
+                                'deposit' => 0,
+                                'withdraw' => $transaction->total,
+                                'saldo' => $bank->saldo,
+                                'note' =>  $member->name,
+                            ]);
+
+                            $record->delete();
+
+                            Notification::make()
+                                ->title('Dana gantung berhasil diproses!')
+                                ->success()
+                                ->send();
+                        });
+
+                    })
+ 
+                    ->visible(fn ($record) =>
+                        auth()->user()->hasPermissionTo('create_pendingdepo') && $record->status == "P"
+                    )
+                    ->slideOver(),
+               
+                  
+               
                 Action::make('delete')
                     ->label('Hapus')
                     ->icon('heroicon-s-trash')
@@ -174,40 +225,40 @@ class PendingwdResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi delete data')
                     ->modalDescription('Yakin ingin menghapus data ini?')
-                    ->action(function (\App\Models\Pendingwd $record) {
+                    ->action(function (\App\Models\Pendingdepo $record) {
                        
-                        $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
                         $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
-                      
+                        $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
 
-                        $group->decrement('koin', $record->nominal);
+                        $bank->decrement('saldo',  $record->nominal);
+                        $group->decrement('saldo',  $record->nominal);
 
-                        $history = Koinhistory::create([
-                            'group_id' => $record->operator->group_id,
-                            'keterangan' => 'Withdraw gantung refund',
-                            'member_id' => 0,
-                            'koin' => $record->nominal,
-                            'saldo' => $group->saldo,
-                            'operator_id' => Auth::id(),
-                            
+                        $log = Logtransaksi::create([
+                            'operator_id' =>  Auth::id(),
+                            'bank_id' =>  $record->bank_id,
+                            'type_transaksi' => 'DPR',
+                            'type' =>  'withdraw',
+                            'rekenin_name' => $record->bank->label,
+                            'deposit' => 0,
+                            'withdraw' => $record->nominal,
+                            'saldo' => $bank->saldo,
+                            'note' =>  'DP Gantung Refund',
                         ]);
 
-                        
+                       
+
                         if( $record->status == 2){
 
-                            $bank->increment('saldo',  $record->nominal);
-                            $group->increment('saldo',  $record->nominal);
+                            $group->increment('koin', $record->nominal);
 
-                            $log = Logtransaksi::create([
-                                'operator_id' =>  Auth::id(),
-                                'bank_id' =>  $record->bank_id,
-                                'type_transaksi' => 'WDR',
-                                'type' =>  'deposit',
-                                'rekenin_name' => $bank->label,
-                                'deposit' =>  $record->nominal,
-                                'withdraw' => 0,
-                                'saldo' => $bank->saldo,
-                                'note' =>  'DP Gantung Refund',
+                            $history = Koinhistory::create([
+                                'group_id' => $record->operator->group_id,
+                                'keterangan' => 'Deposit gantung refund',
+                                'member_id' => 0,
+                                'koin' => $record->nominal,
+                                'saldo' => $group->saldo,
+                                'operator_id' => Auth::id(),
+                                
                             ]);
 
                              
@@ -215,13 +266,107 @@ class PendingwdResource extends Resource
                         }
 
                         
-                     
-                        
                         $record->delete();
 
                    
-                    }),
+                    })
+                    ->visible(fn () =>
+                        auth()->user()->hasPermissionTo('create_pendingwd')
+                    ),
             ])
+            // ->actions([
+               
+                  
+            //     Action::make('setSuccess')
+            //         ->label('Set Success')
+            //         ->icon('heroicon-s-clipboard-document-check')
+            //         ->color('success')
+            //         ->requiresConfirmation()
+            //         ->modalHeading('Konfirmasi Update Status')
+            //         ->modalDescription('Yakin ingin mengubah status menjadi Success?')
+            //         ->action(function (\App\Models\Pendingwd $record) {
+            //             $record->update(['status' => "S"]);
+
+            //             $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+            //             $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
+
+            //             $bank->decrement('saldo',  $record->nominal);
+            //             $group->decrement('saldo',  $record->nominal);
+
+            //             $log = Logtransaksi::create([
+            //                 'operator_id' =>  Auth::id(),
+            //                 'bank_id' =>  $record->bank_id,
+            //                 'type_transaksi' => 'DPP',
+            //                 'type' =>  'withdraw',
+            //                 'rekenin_name' => $bank->label,
+            //                 'deposit' => 0,
+            //                 'withdraw' => $record->nominal,
+            //                 'saldo' => $bank->saldo,
+            //                 'note' =>  'DP Gantung Refund',
+            //             ]);
+                       
+            //         })
+            //          ->visible(fn ($record) =>
+            //             auth()->user()->hasPermissionTo('create_pendingwd') && $record->status == "P"
+            //         ),
+            //     Action::make('delete')
+            //         ->label('Hapus')
+            //         ->icon('heroicon-s-trash')
+            //         ->color('danger')
+            //         ->requiresConfirmation()
+            //         ->modalHeading('Konfirmasi delete data')
+            //         ->modalDescription('Yakin ingin menghapus data ini?')
+            //         ->action(function (\App\Models\Pendingwd $record) {
+                       
+            //             $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+            //             $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
+                      
+
+            //             $group->decrement('koin', $record->nominal);
+
+            //             $history = Koinhistory::create([
+            //                 'group_id' => $record->operator->group_id,
+            //                 'keterangan' => 'Withdraw gantung refund',
+            //                 'member_id' => 0,
+            //                 'koin' => $record->nominal,
+            //                 'saldo' => $group->saldo,
+            //                 'operator_id' => Auth::id(),
+                            
+            //             ]);
+
+                        
+            //             if( $record->status == 2){
+
+            //                 $bank->increment('saldo',  $record->nominal);
+            //                 $group->increment('saldo',  $record->nominal);
+
+            //                 $log = Logtransaksi::create([
+            //                     'operator_id' =>  Auth::id(),
+            //                     'bank_id' =>  $record->bank_id,
+            //                     'type_transaksi' => 'WDR',
+            //                     'type' =>  'deposit',
+            //                     'rekenin_name' => $bank->label,
+            //                     'deposit' =>  $record->nominal,
+            //                     'withdraw' => 0,
+            //                     'saldo' => $bank->saldo,
+            //                     'note' =>  'DP Gantung Refund',
+            //                 ]);
+
+                             
+
+            //             }
+
+                        
+                     
+                        
+            //             $record->delete();
+
+                   
+            //         })
+            //         ->visible(fn () =>
+            //             auth()->user()->hasPermissionTo('create_pendingwd')
+            //         ),
+            // ])
             // ->bulkActions([
             //     Tables\Actions\BulkActionGroup::make([
             //           Tables\Actions\BulkAction::make('delete_with_refund')

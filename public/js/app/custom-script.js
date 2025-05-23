@@ -26,18 +26,11 @@
      nominalInput.addEventListener('keyup', function (event) {
         const nominalVal = event.target.value;
 
-        console.log(type.value);
-
         var updateSaldo = 0
         
-        if(type.value === "dp"){
-            updateSaldo = parseInt(saldoAwalInput.value)+parseInt(nominalVal);
-        }else{
-            updateSaldo = parseInt(saldoAwalInput.value)-parseInt(nominalVal);
-        }
-      
+        updateSaldo = parseInt(saldoAwalInput.value)+parseInt(nominalVal);
 
-         saldoAkhirInput.value = updateSaldo
+        saldoAkhirInput.value = updateSaldo
 
         
      });

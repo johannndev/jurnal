@@ -18,10 +18,8 @@ return new class extends Migration
             $table->string('sitename');
             $table->string('member_name');
             $table->string('bank');
-            $table->string('username');
             $table->string('nominal');
-            $table->string('bank_id');
-            $table->integer('status')->default(1);
+            $table->string('status')->default('P');
             $table->timestamps();
         });
     }

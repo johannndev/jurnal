@@ -5,7 +5,7 @@ namespace App\Filament\Resources\PendingDepoResource\Pages;
 use App\Filament\Resources\PendingDepoResource;
 use App\Filament\Resources\PendingDepoResource\Widgets\PendingDepoOverview;
 use App\Filament\Widgets\RealtimeClock;
-use App\Models\Pending;
+use App\Models\Pendingdepo;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Actions;
@@ -34,12 +34,15 @@ class ListPendingDepos extends ListRecords
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data) {
-                    $records = Pending::where('type',1)
+                    $records = Pendingdepo::where('type',1)
                         ->whereDate('created_at', '>=', $data['start_date'])
                         ->whereDate('created_at', '<=', $data['end_date'])
                         ->delete();
 
-                }),
+                })
+                ->visible(fn () =>
+                    auth()->user()->hasPermissionTo('create_pendingdepo')
+                ),
         ];
     }
 

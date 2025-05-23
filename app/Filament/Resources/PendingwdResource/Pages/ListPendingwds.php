@@ -5,7 +5,7 @@ namespace App\Filament\Resources\PendingwdResource\Pages;
 use App\Filament\Resources\PendingwdResource;
 use App\Filament\Resources\PendingwdResource\Widgets\PendingWdOverview;
 use App\Filament\Widgets\RealtimeClock;
-use App\Models\Pending;
+use App\Models\Pendingwd;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Actions;
@@ -34,12 +34,15 @@ class ListPendingwds extends ListRecords
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data) {
-                    $records = Pending::where('type',1)
+                    $records = Pendingwd::where('type',1)
                         ->whereDate('created_at', '>=', $data['start_date'])
                         ->whereDate('created_at', '<=', $data['end_date'])
                         ->delete();
 
-                }),
+                })
+                ->visible(fn () =>
+                    auth()->user()->hasPermissionTo('create_pendingwd')
+                ),
         ];
     }
 

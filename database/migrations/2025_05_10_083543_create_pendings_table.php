@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('bank_id')->constrained('banks')->cascadeOnDelete();
             $table->string('nama_rek');
             $table->integer('nominal');
-            $table->integer('status')->default(1);
+            $table->string('status')->default('P');
             $table->timestamps();
         });
     }

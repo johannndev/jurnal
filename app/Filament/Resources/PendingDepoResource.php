@@ -9,7 +9,9 @@ use App\Models\Bank;
 use App\Models\Group;
 use App\Models\Koinhistory;
 use App\Models\Logtransaksi;
-use App\Models\Pending;
+use App\Models\Member;
+use App\Models\Pendingdepo;
+use App\Models\Transaction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,10 +24,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
-class PendingDepoResource extends Resource
+class PendingdepoResource extends Resource
 {
-    protected static ?string $model = Pending::class;
+    protected static ?string $model = Pendingdepo::class;
 
      protected static ?string $modelLabel = 'Pending Deposit';
 
@@ -97,48 +101,126 @@ class PendingDepoResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        "1" => 'warning',  // Hijau
-                        "2" => 'success',  // Merah
+                        "P" => 'warning',  // Hijau
+                        "S" => 'success',  // Merah
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        "1" => 'Pending',
-                        "2"=> 'Success',
+                        "P" => 'Pending',
+                        "S"=> 'Success',
                         default => ucfirst($state),
                     }),
             ])
          
             ->actions([
-               
-                  
-                Action::make('setSuccess')
-                    ->label('Set Success')
+                Action::make('proses')
+                    ->label('Proses')
+                    ->modalHeading('Proses Dana Gantung')
                     ->icon('heroicon-s-clipboard-document-check')
                     ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Update Status')
-                    ->modalDescription('Yakin ingin mengubah status menjadi Success?')
-                    ->action(function (\App\Models\Pending $record) {
-                        $record->update(['status' => 2]);
-
-                        $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
+                    ->form([
+                        Forms\Components\TextInput::make('nama_rek')
+                            ->label('Nama Rekening')
+                            ->default(fn ($record) => $record->nama_rek)
+                            ->disabled(),
+                        Forms\Components\Select::make('member_id')
+                            ->label('User ID')
+                            ->relationship('member', 'username')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $member = Member::with('group')->where('id',$state)->first();
+                                if ($member) {
+                                    $set('sitename', $member->group->name);
+                                } else {
+                                    $set('sitename', null);
+                                }
+                            }),
+                        Forms\Components\TextInput::make('sitename')
+                            ->label('Sitename')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('nominal')
+                            ->label('Nominal')
+                            ->default(fn ($record) => $record->nominal)
+                            ->disabled(),
+                        Forms\Components\Textarea::make('notes')
+                                ->autosize(),
+                        Forms\Components\TextInput::make('rekening')
+                            ->label('Ke Rekening')
+                            ->default(fn ($record) => $record->bank->label)
+                            ->disabled(),
                         
-                        $group->decrement('koin', $record->nominal);
-                        
-                        $history = Koinhistory::create([
-                            'group_id' => $record->operator->group_id,
-                            'keterangan' => 'Deposit gantung',
-                            'member_id' => 0,
-                            'koin' => $record->nominal,
-                            'saldo' => $group->saldo,
-                            'operator_id' => Auth::id(),
-                            
-                        ]);
-
+                    ])
+                    ->action(function (array $data, $record) {
                        
-                    })
-                    ->visible(fn ($record) => $record->status == 1),
 
+                        DB::transaction(function () use ($data, $record) {
+
+
+                            $transaction = Transaction::create([
+                                'operator_id' =>  Auth::id(),
+                                'member_id' => $data['member_id'],
+                                'bank_id' => $record->bank_id,
+                                'total' =>  $record->nominal,
+                                'fee' => 0,
+                                'bonus' =>0,
+                                'note' =>  $data['notes'] ?? null,
+                                'type' => 'deposit',
+                                'deposit' => $record->nominal,
+                                'withdraw' => 0,
+                            ]);
+
+                            $member = Member::find($data['member_id']);
+                            $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                            $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
+
+                            $group->decrement('koin',  $record->nominal);
+                            $group->increment('saldo',  $record->nominal);
+
+                            $koin = -$record->nominal;
+
+
+                            $history = Koinhistory::create([
+                                'group_id' => $member->group_id,
+                                'keterangan' => 'deposit',
+                                'member_id' => $member->id,
+                                'koin' => $koin,
+                                'saldo' => $group->saldo,
+                                'operator_id' => Auth::id(),
+                                
+                            ]);
+
+                            $log = Logtransaksi::create([
+                                'operator_id' =>  $transaction->operator_id,
+                                'bank_id' =>  $transaction->bank_id,
+                                'type_transaksi' => 'TR',
+                                'type' =>  $transaction->type,
+                                'rekenin_name' => $bank->label,
+                                'deposit' => $transaction->total,
+                                'withdraw' => 0,
+                                'saldo' => $bank->saldo,
+                                'note' =>  $member->name,
+                            ]);
+
+                            $record->delete();
+
+                            Notification::make()
+                                ->title('Dana gantung berhasil diproses!')
+                                ->success()
+                                ->send();
+                        });
+
+                    })
+ 
+                    ->visible(fn ($record) =>
+                        auth()->user()->hasPermissionTo('create_pendingdepo') && $record->status == "P"
+                    )
+                    ->slideOver(),
+               
+                  
+               
                 Action::make('delete')
                     ->label('Hapus')
                     ->icon('heroicon-s-trash')
@@ -146,7 +228,7 @@ class PendingDepoResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi delete data')
                     ->modalDescription('Yakin ingin menghapus data ini?')
-                    ->action(function (\App\Models\Pending $record) {
+                    ->action(function (\App\Models\Pendingdepo $record) {
                        
                         $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
                         $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
@@ -190,7 +272,10 @@ class PendingDepoResource extends Resource
                         $record->delete();
 
                    
-                    }),
+                    })
+                    ->visible(fn () =>
+                        auth()->user()->hasPermissionTo('create_pendingdepo')
+                    ),
             ])
             
             ->filters([
