@@ -14,7 +14,7 @@ class PendingWdOverview extends BaseWidget
         $totalSaldo = Pendingwd::sum('nominal');
 
         return [
-            Stat::make('Total Depo Gantung', 'Rp '.number_format($totalSaldo,0,'','.')),
+            Stat::make('Total Wd Gantung', 'Rp '.number_format($totalSaldo,0,'','.')),
         ];
      
     }

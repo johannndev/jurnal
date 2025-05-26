@@ -77,6 +77,7 @@ class PendingwdResource extends Resource
                         Forms\Components\TextInput::make('nominal')
                             ->label('Nominal')
                             ->numeric()
+                            ->required()
                             ->extraAttributes([
                                 'id' => 'nominal', // Tambahkan id untuk akses di JS
                             ]),
@@ -181,13 +182,9 @@ class PendingwdResource extends Resource
 
                             $member = Member::find($record->member_id);
                             $bank = Bank::where('id', $data['wd_bank'])->lockForUpdate()->first();
-                            $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
 
-                            $group->decrement('saldo',  $total);
                             $bank->decrement('saldo', $total);
 
-
-                            $koin =  $total;
 
                             $log = Logtransaksi::create([
                                 'operator_id' =>  $transaction->operator_id,
@@ -225,45 +222,22 @@ class PendingwdResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi delete data')
                     ->modalDescription('Yakin ingin menghapus data ini?')
-                    ->action(function (\App\Models\Pendingdepo $record) {
+                    ->action(function (\App\Models\Pendingwd $record) {
                        
                         $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
-                        $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                        
+                        $group->decrement('koin',  $record->nominal);
+                        $group->increment('saldo',  $record->nominal);
 
-                        $bank->decrement('saldo',  $record->nominal);
-                        $group->decrement('saldo',  $record->nominal);
-
-                        $log = Logtransaksi::create([
-                            'operator_id' =>  Auth::id(),
-                            'bank_id' =>  $record->bank_id,
-                            'type_transaksi' => 'DPR',
-                            'type' =>  'withdraw',
-                            'rekenin_name' => $record->bank->label,
-                            'deposit' => 0,
-                            'withdraw' => $record->nominal,
-                            'saldo' => $bank->saldo,
-                            'note' =>  'DP Gantung Refund',
+                        $history = Koinhistory::create([
+                            'group_id' => $record->operator->group_id,
+                            'keterangan' => 'Delete WD gantung',
+                            'member_id' => $record->member_id,
+                            'koin' => $record->nominal,
+                            'saldo' => $group->saldo,
+                            'operator_id' => Auth::id(),
+                            
                         ]);
-
-                       
-
-                        if( $record->status == 2){
-
-                            $group->increment('koin', $record->nominal);
-
-                            $history = Koinhistory::create([
-                                'group_id' => $record->operator->group_id,
-                                'keterangan' => 'Deposit gantung refund',
-                                'member_id' => 0,
-                                'koin' => $record->nominal,
-                                'saldo' => $group->saldo,
-                                'operator_id' => Auth::id(),
-                                
-                            ]);
-
-                             
-
-                        }
 
                         
                         $record->delete();

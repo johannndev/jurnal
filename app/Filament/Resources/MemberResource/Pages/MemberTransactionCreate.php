@@ -61,6 +61,7 @@ class MemberTransactionCreate extends Page
 
         DB::transaction(function () {
             $transaction = Transaction::create([
+                'group_id' =>   $this->member->group_id,
                 'operator_id' => $this->operator,
                 'member_id' => $this->member->id,
                 'bank_id' => $this->bank_id,
@@ -102,6 +103,7 @@ class MemberTransactionCreate extends Page
             ]);
 
             $log = Logtransaksi::create([
+                
                 'operator_id' =>  $transaction->operator_id,
                 'bank_id' =>  $transaction->bank_id,
                 'type_transaksi' => 'TR',

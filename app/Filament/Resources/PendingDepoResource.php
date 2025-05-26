@@ -173,7 +173,6 @@ class PendingdepoResource extends Resource
                             ]);
 
                             $member = Member::find($data['member_id']);
-                            $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
                             $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
 
                             $group->decrement('koin',  $record->nominal);
@@ -192,17 +191,7 @@ class PendingdepoResource extends Resource
                                 
                             ]);
 
-                            $log = Logtransaksi::create([
-                                'operator_id' =>  $transaction->operator_id,
-                                'bank_id' =>  $transaction->bank_id,
-                                'type_transaksi' => 'TR',
-                                'type' =>  $transaction->type,
-                                'rekenin_name' => $bank->label,
-                                'deposit' => $transaction->total,
-                                'withdraw' => 0,
-                                'saldo' => $bank->saldo,
-                                'note' =>  $member->name,
-                            ]);
+                            
 
                             $record->delete();
 
@@ -229,12 +218,9 @@ class PendingdepoResource extends Resource
                     ->modalHeading('Konfirmasi delete data')
                     ->modalDescription('Yakin ingin menghapus data ini?')
                     ->action(function (\App\Models\Pendingdepo $record) {
-                       
-                        $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
                         $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
 
                         $bank->decrement('saldo',  $record->nominal);
-                        $group->decrement('saldo',  $record->nominal);
 
                         $log = Logtransaksi::create([
                             'operator_id' =>  Auth::id(),
@@ -245,28 +231,8 @@ class PendingdepoResource extends Resource
                             'deposit' => 0,
                             'withdraw' => $record->nominal,
                             'saldo' => $bank->saldo,
-                            'note' =>  'DP Gantung Refund',
+                            'note' =>  'Delete Depo Gantung',
                         ]);
-
-                       
-
-                        if( $record->status == 2){
-
-                            $group->increment('koin', $record->nominal);
-
-                            $history = Koinhistory::create([
-                                'group_id' => $record->operator->group_id,
-                                'keterangan' => 'Deposit gantung refund',
-                                'member_id' => 0,
-                                'koin' => $record->nominal,
-                                'saldo' => $group->saldo,
-                                'operator_id' => Auth::id(),
-                                
-                            ]);
-
-                             
-
-                        }
 
                         
                         $record->delete();

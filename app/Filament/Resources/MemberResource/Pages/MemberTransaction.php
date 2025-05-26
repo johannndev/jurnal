@@ -4,13 +4,19 @@ namespace App\Filament\Resources\MemberResource\Pages;
 
 use App\Filament\Resources\MemberResource;
 use App\Filament\Widgets\RealtimeClock;
+use App\Models\Bank;
+use App\Models\Group;
+use App\Models\Koinhistory as KH;
+use App\Models\Logtransaksi ;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
-use Filament\Tables\Table;
+use Filament\Tables\Actions\Action as TabelAction;
 use Filament\Tables\Concerns\InteractsWithTable;
 use App\Models\Transaction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MemberTransaction extends Page implements Tables\Contracts\HasTable
 {
@@ -53,6 +59,7 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
         $this->balance = $this->totalDeposit - $this->totalWithdraw;
     }
 
+
     protected function getHeaderActions(): array
     {
         return [
@@ -86,10 +93,69 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
         ];
     }
 
-    protected function getTableActions(): array
+   protected function getTableActions(): array
     {
         return [
-            Tables\Actions\EditAction::make(),
+            TabelAction::make('delete')
+                ->label('Hapus')
+                ->icon('heroicon-s-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Konfirmasi delete data')
+                ->modalDescription('Yakin ingin menghapus data ini?')
+                ->action(function ($record) {
+
+                    DB::transaction(function () use($record) {
+
+                        $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                        $group = Group::where('id', $record->group_id)->lockForUpdate()->first();
+
+                        if ($record->type === 'deposit') {
+                            $bank->decrement('saldo',$record->total);
+                            $group->increment('koin',$record->total);
+                            $group->decrement('saldo',$record->total);
+
+                            $returnType = 'withdraw';
+
+                            $koin = $record->total;
+
+                        } elseif ($record->type === 'withdraw') {
+                            $bank->increment('saldo',$record->total);
+                            $group->decrement('koin',$record->total);
+                            $group->increment('saldo',$record->total);
+
+                            $returnType = 'deposit';
+                            
+                            $koin = -$record->total;
+                        }
+
+                        $history = KH::create([
+                            'group_id' =>  $record->group_id,
+                            'keterangan' => 'delete transaksi '.$record->type,
+                            'member_id' => $record->member_id,
+                            'koin' => $koin,
+                            'saldo' => $group->saldo,
+                            'operator_id' => $record->operator_id,
+                            
+                        ]);
+
+                    
+
+                        $log = Logtransaksi::create([
+                            'operator_id' =>  Auth::id(),
+                            'bank_id' =>  $record->bank_id,
+                            'type_transaksi' => 'TR',
+                            'type' =>   $returnType,
+                            'rekenin_name' => $bank->label,
+                            'deposit' =>  $returnType === 'deposit' ? $record->total : 0,
+                            'withdraw' =>  $returnType === 'withdraw' ? $record->total : 0,
+                            'saldo' => $bank->saldo,
+                            'note' => 'delete transaksi '.$record->type.' '.$record->member->name,
+                        ]);
+
+                        $record->delete();
+                    });
+                }),
         ];
     }
 

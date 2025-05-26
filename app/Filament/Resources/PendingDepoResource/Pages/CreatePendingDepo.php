@@ -7,9 +7,12 @@ use App\Models\Bank;
 use App\Models\Group;
 use App\Models\Koinhistory;
 use App\Models\Logtransaksi;
+use App\Models\Pendingdepo;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CreatePendingDepo extends CreateRecord
 {
@@ -23,32 +26,48 @@ class CreatePendingDepo extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['operator_id'] = Auth::id();
-
         return $data;
     }
 
-    protected function afterCreate(): void
+    protected function handleRecordCreation(array $data): Pendingdepo
     {
-        
-        $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
-        $bank = Bank::where('id', $this->record->bank_id)->lockForUpdate()->first();
+        return DB::transaction(function () use ($data) {
+            // Buat record pending depo
+            $pendingDepo = Pendingdepo::create($data);
 
-        $bank->increment('saldo',  $this->record->nominal);
-        $group->increment('saldo',  $this->record->nominal);
+            // Lock untuk konsistensi saldo
+            $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
+            $bank = Bank::where('id', $data['bank_id'])->lockForUpdate()->first();
 
-        $log = Logtransaksi::create([
-            'operator_id' =>  Auth::id(),
-            'bank_id' =>  $this->record->bank_id,
-            'type_transaksi' => 'DPP',
-            'type' =>  'deposit',
-            'rekenin_name' => $this->record->bank->label,
-            'deposit' => $this->record->nominal,
-            'withdraw' => 0,
-            'saldo' => $bank->saldo,
-            'note' =>  'DP Gantung',
-        ]);
+            // Update saldo
+            $bank->increment('saldo', $data['nominal']);
 
+            // Simpan log transaksi
+            Logtransaksi::create([
+                'operator_id'     => Auth::id(),
+                'bank_id'         => $data['bank_id'],
+                'type_transaksi'  => 'DPT', // Deposit Pending Transaction
+                'type'            => 'deposit',
+                'rekenin_name'    => $bank->label,
+                'deposit'         => $data['nominal'],
+                'withdraw'        => 0,
+                'saldo'           => $bank->saldo,
+                'note'            => 'Pending Deposit',
+            ]);
 
-       
+            return $pendingDepo; // return jika semua berhasil
+        });
     }
+
+    protected function handleRecordCreationException(\Throwable $e): void
+    {
+        Notification::make()
+            ->title('Gagal menyimpan data')
+            ->body('Terjadi kesalahan: ' . $e->getMessage())
+            ->danger()
+            ->send();
+
+        parent::handleRecordCreationException($e);
+    }
+
 }

@@ -42,7 +42,7 @@ class HistoryLogBank extends Page implements Tables\Contracts\HasTable
     protected function getTableQuery()
     {
         return Logtransaksi::query()
-            ->whereIn('type_transaksi', ['TR','WDP','WDR','DPR','DPP'])
+            ->whereIn('type_transaksi', ['TR','WDP','WDR','DPR','DPT'])
             ->where('bank_id', $this->record->id)
             ->orderBy('created_at', 'desc');
     }
