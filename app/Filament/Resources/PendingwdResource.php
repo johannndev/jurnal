@@ -48,31 +48,12 @@ class PendingwdResource extends Resource
             Grid::make()
                 ->columns(1) // Sesuaikan jumlah kolom agar cukup
                 ->schema([
-                     Forms\Components\Select::make('member_id')
+                        Hidden::make('member'),
+                      
+                       Forms\Components\TextInput::make('member_id')
                             ->label('User ID')
-                            ->relationship('member', 'username')
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, callable $set) {
-                                $member = Member::with('group')->where('id',$state)->first();
-                                if ($member) {
-                                    $set('username', $member->username);
-                                    $set('sitename', $member->group->name);
-                                    $set('member_name', $member->name);
-                                    $set('bank', $member->bank_name);
-                                } else {
-                                    $set('sitename', null);
-                                    $set('member_name', null);
-                                    $set('bank', null);
-                                    $set('username');
-
-                                 
-                                }
-                            }),
-
-                       
+                            ->disabled(fn () => true)  // tampak disable
+                            ->dehydrated(false), 
                        
                         Forms\Components\TextInput::make('nominal')
                             ->label('Nominal')
@@ -84,15 +65,15 @@ class PendingwdResource extends Resource
                         Forms\Components\TextInput::make('sitename')
                             ->label('Sitename')
                             ->disabled(fn () => true)  // tampak disable
-                            ->dehydrated(true), 
+                            ->dehydrated(false), 
                         Forms\Components\TextInput::make('member_name')
                             ->label('Nama member')
                             ->disabled(fn () => true)  // tampak disable
-                            ->dehydrated(true), 
+                            ->dehydrated(false), 
                         Forms\Components\TextInput::make('bank')
                             ->label('Bank member')
                             ->disabled(fn () => true)  // tampak disable
-                            ->dehydrated(true), 
+                            ->dehydrated(false), 
                        
                         
                 ])
