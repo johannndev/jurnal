@@ -60,10 +60,21 @@ class MemberTransactionCreate extends Page
         }
 
         DB::transaction(function () {
+
+            $member = Member::find($this->member->id);
+
+            $firstDepo = 'N';
+
+            if($member->first_depo == 'Y'){
+                $firstDepo = 'Y';
+                $member->update(['first_depo'=>'N']);
+            }
+
             $transaction = Transaction::create([
                 'group_id' =>   $this->member->group_id,
                 'operator_id' => $this->operator,
                 'member_id' => $this->member->id,
+                'first_depo' => $firstDepo,
                 'bank_id' => $this->bank_id,
                 'total' => $this->total,
                 'fee' => $this->b_trf,

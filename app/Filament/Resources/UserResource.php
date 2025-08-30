@@ -20,11 +20,13 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationLabel = 'Operator'; // Nama di sidebar
+    protected static ?string $navigationLabel = 'User'; // Nama di sidebar
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $slug = 'operator';
+    protected static ?string $slug = 'user';
+
+    protected static ?int $navigationSort = 5;
     
 
     public static function form(Form $form): Form

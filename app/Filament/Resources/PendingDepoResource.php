@@ -159,9 +159,20 @@ class PendingdepoResource extends Resource
                         DB::transaction(function () use ($data, $record) {
 
 
+                            $member = Member::find($data['member_id']);
+
+                            $firstDepo = 'N';
+
+                            if($member->first_depo == 'Y'){
+                                $firstDepo = 'Y';
+                                $member->update(['first_depo' => 'N']);
+                            }
+
                             $transaction = Transaction::create([
+                                'group_id' =>   $member->group_id,
                                 'operator_id' =>  Auth::id(),
                                 'member_id' => $data['member_id'],
+                                'first_depo' => $firstDepo,
                                 'bank_id' => $record->bank_id,
                                 'total' =>  $record->nominal,
                                 'fee' => 0,
@@ -172,7 +183,7 @@ class PendingdepoResource extends Resource
                                 'withdraw' => 0,
                             ]);
 
-                            $member = Member::find($data['member_id']);
+                            
                             $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
 
                             $group->decrement('koin',  $record->nominal);

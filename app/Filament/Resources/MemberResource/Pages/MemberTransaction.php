@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MemberResource\Pages;
 
 use App\Filament\Resources\MemberResource;
+use App\Filament\Resources\MemberResource\Widgets\GroupStat;
 use App\Filament\Widgets\RealtimeClock;
 use App\Models\Bank;
 use App\Models\Group;
@@ -51,8 +52,6 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
                 SUM(CASE WHEN type = 'withdraw' THEN total ELSE 0 END) as total_withdraw
             ")
             ->first();
-
-            
 
         $this->totalDeposit = $result->total_deposit ?? 0;
         $this->totalWithdraw = $result->total_withdraw ?? 0;
@@ -175,7 +174,8 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
     {
         return [
             RealtimeClock::class,
-           
+            MemberResource\Widgets\GroupStat::class,
+            
         ];
     }
 

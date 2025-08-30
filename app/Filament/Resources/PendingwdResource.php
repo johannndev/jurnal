@@ -147,10 +147,21 @@ class PendingwdResource extends Resource
                         DB::transaction(function () use ($data, $record) {
 
                             $total = (float) ($record->nominal + $data['biaya_transfer'] ?? 0);
+                            
+                            $member = Member::find($record->member_id);
+
+                             $firstDepo = 'N';
+
+                            if($member->first_depo == 'Y'){
+                                $firstDepo = 'Y';
+                                $member->update(['first_depo' =>'N']);
+                            }
 
                             $transaction = Transaction::create([
+                                'group_id' =>   $member->group_id,
                                 'operator_id' =>  Auth::id(),
                                 'member_id' => $record->member_id,
+                                'first_depo' => $firstDepo,
                                 'bank_id' => $data['wd_bank'],
                                 'total' => $total,
                                 'fee' => $data['biaya_transfer'] ?? 0,
@@ -161,7 +172,7 @@ class PendingwdResource extends Resource
                                 'withdraw' => $record->nominal,
                             ]);
 
-                            $member = Member::find($record->member_id);
+                            
                             $bank = Bank::where('id', $data['wd_bank'])->lockForUpdate()->first();
 
                             $bank->decrement('saldo', $total);

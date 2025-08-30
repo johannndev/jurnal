@@ -9,7 +9,5 @@ class Group extends Model
 {
     protected $guarded = [];
 
-    
-
 }
 

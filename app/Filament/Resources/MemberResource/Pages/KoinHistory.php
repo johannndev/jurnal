@@ -8,6 +8,11 @@ use Filament\Resources\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\Filter;
+
+use App\Models\Group;
 
 class KoinHistory extends Page implements Tables\Contracts\HasTable
 {
@@ -22,16 +27,43 @@ class KoinHistory extends Page implements Tables\Contracts\HasTable
     protected function getTableQuery()
     {
         $user = auth()->user();
-    
-        if ($user && $user->group_id > 0) {
+        $groupId = request()->get('group_id',1);
 
-            $dataList = ModelsKoinhistory::query()->where('group_id',$user->group_id)->orderBy('created_at', 'desc');
-
-        }else{
-            $dataList = ModelsKoinhistory::query()->orderBy('created_at', 'desc');
+        return ModelsKoinhistory::query()
+            ->when($user && $user->group_id > 0, fn ($q) => $q->where('group_id', $user->group_id))
+            ->when($user && $user->group_id == 0 && $groupId, fn ($q) => $q->where('group_id', $groupId))
+            ->when($user && $user->group_id == 0 && !$groupId, fn ($q) => $q->where('group_id', 1)) // default untuk admin
+            ->orderBy('created_at', 'desc');
         }
 
-        return $dataList;
+    protected function getTableFilters(): array
+    {
+        
+        $gd = Group::where('is_default', 1)->first();
+        $dft = $gd ? $gd->id : 1;
+
+        return [
+            Filter::make('by_group')
+                ->form([
+                    Select::make('group_id')
+                        ->label('Group')
+                        ->options(Group::pluck('name', 'id')->toArray())
+                        ->default(request()->get('group_id', $dft))
+                        ->live()
+                        ->afterStateUpdated(function ($state) {
+                            $url = route('filament.admin.resources.members.koin-history');
+                            return redirect($url . ($state ? '?group_id=' . $state : ''));
+                        }),
+                ])
+                ->indicateUsing(function (array $data): ?string {
+                    if ($data['group_id'] ?? false) {
+                        $group = Group::find($data['group_id']);
+                        return 'Group: ' . ($group?->name ?? 'Unknown');
+                    }
+                    return null;
+                })
+                ->visible(fn () => auth()->user()->group_id == 0),
+        ];
     }
 
     protected function getTableColumns(): array
