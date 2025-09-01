@@ -12,16 +12,9 @@ use Filament\Facades\Filament;
 class GroupStat extends BaseWidget
 {
 
-    public $groupId;
-    public $groupDefault;
+    public ?int $groupId = null;
+    public ?int $groupDefault = null;
 
-    public function mount($groupId,$groupDefault): void
-    {
-        $this->groupId = $groupId;
-        $this->groupDefault = $groupDefault;
-
-        
-    }
     
     protected function getStats(): array
     {
