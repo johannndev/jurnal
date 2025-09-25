@@ -11,15 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pendingwds', function (Blueprint $table) {
+        Schema::create('bonuses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('operator_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('member_id')->constrained('members')->cascadeOnDelete();
-            $table->string('sitename');
-            $table->string('member_name');
-            $table->string('bank');
-            $table->integer('nominal');
-            $table->string('status')->default('P');
+            $table->foreignId('group_id')->constrained('groups')->cascadeOnDelete();
+             $table->integer('nominal');
             $table->timestamps();
         });
     }
@@ -29,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pendingwds');
+        Schema::dropIfExists('bonuses');
     }
 };
