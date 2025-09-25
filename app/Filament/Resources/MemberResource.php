@@ -140,6 +140,7 @@ class MemberResource extends Resource
             'edit' => Pages\EditMember::route('/{record}/edit'),
             'member-transaksi' => MemberTransaction::route('/{record}/transactions'),
             'create-transaction' => Pages\MemberTransactionCreate::route('/{record}/transactions/create'),
+            'create-bonus' => Pages\MemberAddBonus::route('/{record}/transactions/add-bonus'),
             'koin-history' => Pages\KoinHistory::route('/transactions/koin-history'),  
         ];
     }

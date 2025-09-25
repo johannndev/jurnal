@@ -71,6 +71,11 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
                 ->label('Withdraw')
                 ->url(fn () => route('filament.admin.resources.members.create-transaction', ['record' => $this->userId,'type'=>'withdraw']))
                 ->icon('heroicon-o-plus'),
+
+            Action::make('add_bonus')
+                ->label('Bonus Koin')
+                ->url(fn () => route('filament.admin.resources.members.create-bonus', ['record' => $this->userId]))
+                ->icon('heroicon-o-plus'),
         ];
     }
 
