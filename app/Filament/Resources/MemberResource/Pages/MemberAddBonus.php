@@ -79,7 +79,7 @@ class MemberAddBonus extends Page
                 'total' => $this->total,
                 'fee' => $this->b_trf,
                 'bonus' => $this->nominal,
-                'note' => 'Bonus Koin',
+                'note' => $this->note,
                 'type' => 'bonus',
                 'deposit' =>  0,
                 'withdraw' => 0,
@@ -140,6 +140,8 @@ class MemberAddBonus extends Page
                         ->extraAttributes([
                             'id' => 'nominal', // Tambahkan id untuk akses di JS
                         ]),
+                    Forms\Components\Textarea::make('note')
+                        ->columnSpan(2)
 
 
                 ]),
