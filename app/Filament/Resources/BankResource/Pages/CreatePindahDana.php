@@ -85,6 +85,7 @@ class CreatePindahDana extends Page
                 'deposit' =>  0,
                 'withdraw' =>  $this->total,
                 'saldo' =>   $bankFrom->saldo,
+                'note' => "Dana Keluar"
               
             ]);
 
@@ -97,6 +98,7 @@ class CreatePindahDana extends Page
                 'deposit' =>  $this->total,
                 'withdraw' =>  0,
                 'saldo' =>   $bankTo->saldo,
+                'note' => "Dana Masuk"
               
             ]);
 
