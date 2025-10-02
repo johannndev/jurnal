@@ -39,10 +39,15 @@ class HistoryLogBank extends Page implements Tables\Contracts\HasTable
         $this->record = $record;
     }
 
+    public function getTitle(): string
+    {
+        return $this->record->label; // ambil label dari bank
+    }
+
     protected function getTableQuery()
     {
         return Logtransaksi::query()
-            ->whereIn('type_transaksi', ['TR','WDP','WDR','DPR','DPT'])
+            //->whereIn('type_transaksi', ['TR','WDP','WDR','DPR','DPT','PD'])
             ->where('bank_id', $this->record->id)
             ->orderBy('created_at', 'desc');
     }
