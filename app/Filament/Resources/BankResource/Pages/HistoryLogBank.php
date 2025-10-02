@@ -56,17 +56,28 @@ class HistoryLogBank extends Page implements Tables\Contracts\HasTable
     {
         return [
             TextColumn::make('created_at')->label('Waktu')->dateTime('d/m/Y H:i:s'),
-            TextColumn::make('type')
+            TextColumn::make('type_transaksi')
                 ->label('Remark')
                 ->badge()
-                ->color(fn ($state) => match ($state) {
-                    'deposit' => 'success',  // Hijau
-                    'withdraw' => 'danger',  // Merah
-                    'edit' => 'warning',  // Merah
-                    default => 'secondary',
+                ->color(fn ($state, $record) => match ($state) {
+                    'TR' => $record->type == 'deposit' ? 'success' : 'danger',  // Hijau
+                    'AJ' => $record->type == 'deposit' ? 'success' : 'danger',  // Hijau
+                    'DPT' => $record->type == 'deposit' ? 'success' : 'danger',  // Hijau
+                    'DPR' => $record->type == 'deposit' ? 'success' : 'danger',  // Hijau
+                    'EP' => 'danger',  // Merah
+                    'IN' => 'success',  // Merah
+                    'PD' => 'warning', 
+                    default => 'gray',
                 })
-                ->formatStateUsing(fn ($state) => match ($state) {
-                    'edit' => 'Edit Transaksi',
+                ->formatStateUsing(fn ($state, $record) => match ($state) {
+                    'TR' =>  ucfirst($record->type),
+                    'DPR' =>  ucfirst($record->type),
+                    'DPT' =>  ucfirst($record->type),
+                    'PD' => 'Pindah Dana',
+                    'IN' => 'Dana Masuk',
+                    'EP' => 'Dana Keluar',
+                    'EP' => 'Dana Keluar',
+                    'AJ' =>  $record->type == 'deposit' ? 'Dana Masuk' : 'Dana Keluar',
                     default => ucfirst($state),
                 }),
             TextColumn::make('note')->label('Keterangan'),
