@@ -20,6 +20,7 @@ class CreateMember extends CreateRecord
             ]);
         }
     }
+    
 
     protected function getRedirectUrl(): string
     {
