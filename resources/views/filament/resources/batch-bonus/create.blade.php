@@ -2,8 +2,9 @@
     <div class="space-y-6">
 
         {{-- Form Filament --}}
-        {{ $this->form }}      
-
+        {{ $this->form }}
+        
+        
         {{-- Preview hasil cek file --}}
         @if($show)
             <x-filament::card class="bg-yellow-100 border-yellow-400 text-yellow-700">

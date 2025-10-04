@@ -9,6 +9,7 @@ use App\Models\Member;
 use App\Models\Transaction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +26,8 @@ class CreateBatchBonus extends CreateRecord
     public $countNotExists = 0;
     public $show = false;
     public $dataArray;
+    public $proses = false;
+
 
     protected function getRedirectUrl(): string
     {
@@ -45,8 +48,25 @@ class CreateBatchBonus extends CreateRecord
         return redirect()->route('filament.admin.resources.batch-bonuses.create');
     }
 
-    protected function handleRecordCreation(array $data): Transaction
+    public function mount(): void
     {
+        parent::mount();
+
+        $user = Auth::user();
+
+        // Set default value
+        if( $user->group_id !== null){
+            $this->form->fill([
+                'selectedGroup' => $user->group_id,
+            ]);
+        }
+        
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        // dd($data);
+
         // dd($this->dataArray,$this->selectedGroup);
 
 

@@ -36,6 +36,8 @@ class BatchBonusResource extends Resource
     public $countExists = 0;
     public $countNotExists = 0;
     public $show = false;
+    public $proses = false;
+
 
 
     public static function form(Form $form): Form
@@ -47,42 +49,53 @@ class BatchBonusResource extends Resource
                     ->options(function () {
                         return Group::pluck('name', 'id');
                     })
-                    ->default(function () {
-                        $user = Auth::user();
-                        return $user->group_id; // default ke group user jika ada
-                    })
                     ->disabled(function () {
                         $user = Auth::user();
                         return $user->group_id !== null; // disable kalau user punya group
                     })
-                    ->reactive()
-                    ->afterStateUpdated(function ($state, $set, $livewire) {
-                        $livewire->selectedGroup = $state; // simpan ke property Livewire
-                    }),
-                Forms\Components\FileUpload::make('attachment')
-                    ->label('file upload')
-                    ->reactive()
-                    ->columnSpan(2)
-                    ->disk('local')
-                    ->directory('file')
-                    ->afterStateUpdated(function ($state, $set, $livewire, $get) {
+                    //->reactive()
+                    //->afterStateUpdated(function ($state, $set, $livewire) {
+                    //    $livewire->selectedGroup = $state; // simpan ke property Livewire
+                    //})
+                    ,
 
+                Forms\Components\Textarea::make('batch')
+                    ->label('Batch Data')
+                    ->columnSpan(2)
+                    ->reactive()
+                    ->rows(10)
+                    ->autosize()
+                    ->placeholder("budi,20000\nwati,25000") 
+                    ->live(onBlur: true) // trigger only saat blur
+                    ->afterStateUpdated(function ($state, $set, $livewire, $get) {
+                        $set('proses', true);
+                        $livewire->proses = true;
                         $groupId = $get('selectedGroup');
-                                        // Baca file CSV/TXT
-                        $assoc = collect(file($state->getRealPath(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES))
+
+                        $rows = array_filter(explode("\n", $state));
+
+                        $data = array_map(function ($row) {
+                            $parts = array_map('trim', explode(',', $row));
+                            return [
+                                $parts[0] ?? null,
+                                isset($parts[1]) ? (int) $parts[1] : 0,
+                            ];
+                        }, $rows);
+
+                       // Ubah menjadi array asosiatif: username => nominal
+                        $assoc = collect($data)
                             ->mapWithKeys(function ($line) {
-                                [$username, $nominal] = explode(',', trim($line)) + [null, 0];
+                                [$username, $nominal] = $line; // $line sudah array [username, nominal]
                                 return [trim($username) => floatval($nominal)];
                             })
-                            ->toArray();
+                        ->toArray();
 
-                        // 2. Ambil member valid dari database: username => id
                         $members = Member::whereIn('username', array_keys($assoc))
                             ->where('group_id', $groupId)
                             ->pluck('id','username') // username => id
-                            ->toArray();
+                        ->toArray();
 
-                        // 3. Gabungkan hanya yang key sama (username ada di database)
+
                         $dataMember = [];
                         $existsCount = 0;
                         $notExistsCount = 0;
@@ -103,6 +116,7 @@ class BatchBonusResource extends Resource
                         $set('countExists', $existsCount);
                         $set('countNotExists', $notExistsCount);
                         $set('show', true);
+                        $set('proses', false);
 
                         $livewire->countExists = $existsCount;
                         $livewire->countNotExists = $notExistsCount;
@@ -111,9 +125,70 @@ class BatchBonusResource extends Resource
 
                         // Simpan array username + nominal yang valid
                         $livewire->dataArray = $dataMember; 
+
+                        $livewire->proses = false;
+
+                        // dd($existsCount,$notExistsCount,$dataMember);
+
+                      
                     }),
+                // Forms\Components\FileUpload::make('attachment')
+                //     ->label('file upload')
+                //     ->reactive()
+                //     ->columnSpan(2)
+                //     ->disk('local')
+                //     ->directory('file')
+                //     ->afterStateUpdated(function ($state, $set, $livewire, $get) {
+
+                //         $groupId = $get('selectedGroup');
+                //                         // Baca file CSV/TXT
+                //         $assoc = collect(file($state->getRealPath(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES))
+                //             ->mapWithKeys(function ($line) {
+                //                 [$username, $nominal] = explode(',', trim($line)) + [null, 0];
+                //                 return [trim($username) => floatval($nominal)];
+                //             })
+                //             ->toArray();
+
+                //         // 2. Ambil member valid dari database: username => id
+                //         $members = Member::whereIn('username', array_keys($assoc))
+                //             ->where('group_id', $groupId)
+                //             ->pluck('id','username') // username => id
+                //             ->toArray();
+
+                //         // 3. Gabungkan hanya yang key sama (username ada di database)
+                //         $dataMember = [];
+                //         $existsCount = 0;
+                //         $notExistsCount = 0;
+
+                //         foreach ($assoc as $username => $nominal) {
+                //             if (isset($members[$username])) {
+                //                 $dataMember[$username] = [
+                //                     'id' => $members[$username],  // ambil id dari database
+                //                     'nominal' => $nominal,        // ambil nominal dari file
+                //                 ];
+                //                 $existsCount++;
+                //             } else {
+                //                 $notExistsCount++;
+                //             }
+                //         }
+
+                //         // Update state Livewire dan form
+                //         $set('countExists', $existsCount);
+                //         $set('countNotExists', $notExistsCount);
+                //         $set('show', true);
+
+                //         $livewire->countExists = $existsCount;
+                //         $livewire->countNotExists = $notExistsCount;
+                //         $livewire->show = true;
+                //         $livewire->selectedGroup = $groupId;
+
+                //         // Simpan array username + nominal yang valid
+                //         $livewire->dataArray = $dataMember; 
+                //     }),
                 ]);
     }
+
+    
 
     public static function table(Table $table): Table
     {
