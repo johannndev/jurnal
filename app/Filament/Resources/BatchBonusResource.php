@@ -63,6 +63,8 @@ class BatchBonusResource extends Resource
                     ->label('file upload')
                     ->reactive()
                     ->columnSpan(2)
+                    ->disk('local')
+                    ->directory('file')
                     ->afterStateUpdated(function ($state, $set, $livewire, $get) {
 
                         $groupId = $get('selectedGroup');
