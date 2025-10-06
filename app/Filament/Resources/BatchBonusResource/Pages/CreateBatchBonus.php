@@ -65,7 +65,7 @@ class CreateBatchBonus extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        // dd($data);
+   
 
         // dd($this->dataArray,$this->selectedGroup);
 
@@ -79,7 +79,7 @@ class CreateBatchBonus extends CreateRecord
             return new Transaction();
         }
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($data) {
 
             $transactionsArray = [];
             foreach ($this->dataArray as $i => $member) {
@@ -92,7 +92,7 @@ class CreateBatchBonus extends CreateRecord
                     'total' => $member['nominal'],
                     'fee' => 0,
                     'bonus' => $member['nominal'],
-                    'note' => null,
+                    'note' => 'Bonus '.$data['bonus'],
                     'type' => 'bonus',
                     'deposit' => 0,
                     'withdraw' => 0,
@@ -121,12 +121,12 @@ class CreateBatchBonus extends CreateRecord
 
             // Insert Koinhistory
             $koinHistory = [];
-            foreach ($transactionsArray as $data) {
+            foreach ($transactionsArray as $row) {
                 $koinHistory[] = [
-                    'group_id' => $data['group_id'],
-                    'keterangan' => 'Bonus koin',
-                    'member_id' => $data['member_id'],
-                    'koin' => -$data['total'],
+                    'group_id' => $row['group_id'],
+                    'keterangan' => 'Bonus '.$data['bonus'],
+                    'member_id' => $row['member_id'],
+                    'koin' => -$row['total'],
                     'saldo' => $group->koin,
                     'operator_id' => Auth::id(),
                     'created_at' => now(),

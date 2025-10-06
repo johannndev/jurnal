@@ -52,12 +52,16 @@ class BatchBonusResource extends Resource
                     ->disabled(function () {
                         $user = Auth::user();
                         return $user->group_id !== null; // disable kalau user punya group
-                    })
+                    }),
                     //->reactive()
                     //->afterStateUpdated(function ($state, $set, $livewire) {
                     //    $livewire->selectedGroup = $state; // simpan ke property Livewire
                     //})
-                    ,
+                Forms\Components\Select::make('bonus')
+                    ->options([
+                        'Rolingan' => 'Rolingan',
+                        'Cashback' => 'Cashback',
+                    ]),
 
                 Forms\Components\Textarea::make('batch')
                     ->label('Batch Data')
