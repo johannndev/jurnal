@@ -15,9 +15,12 @@ use Filament\Tables;
 use Filament\Tables\Actions\Action as TabelAction;
 use Filament\Tables\Concerns\InteractsWithTable;
 use App\Models\Transaction;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class MemberTransaction extends Page implements Tables\Contracts\HasTable
 {
@@ -107,7 +110,27 @@ class MemberTransaction extends Page implements Tables\Contracts\HasTable
                 ->requiresConfirmation()
                 ->modalHeading('Konfirmasi delete data')
                 ->modalDescription('Yakin ingin menghapus data ini?')
-                ->action(function ($record) {
+                ->form([
+                    TextInput::make('password')
+                        ->password()
+                        ->required()
+                        ->label('Password')
+                        ->placeholder('Masukkan password Anda'),
+                ])
+                ->action(function ($record, array $data) {
+
+                     // cek password user yang sedang login
+                    $user = auth()->user();
+
+                    if (! $user || ! isset($data['password']) || ! Hash::check($data['password'], $user->password)) {
+                        Notification::make()
+                            ->title('Password salah')
+                            ->danger()
+                            ->body('Password yang Anda masukkan tidak cocok. Penghapusan dibatalkan.')
+                            ->send();
+
+                        return;
+                    }
 
                     DB::transaction(function () use($record) {
 
