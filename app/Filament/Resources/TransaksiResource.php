@@ -18,10 +18,20 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
+use App\Models\Group;
 
 class TransaksiResource extends Resource
 {
     protected static ?string $model = Transaction::class;
+
+    public static function getEloquentQuery(): Builder
+    {
+        $groupId = Group::getActiveGroupId();
+
+        return static::getModel()::query()
+            ->when($groupId, fn ($query) => $query->where('group_id', $groupId))
+            ->orderBy('created_at', 'desc');
+    }
 
     public static function getNavigationLabel(): string
     {
@@ -115,7 +125,8 @@ class TransaksiResource extends Resource
                     Select::make('group_id')
                         ->label('Group')
                         ->searchable()
-                        ->options(fn () => DB::table('groups')->pluck('name', 'id')->toArray()),
+                        ->options(fn () => DB::table('groups')->pluck('name', 'id')->toArray())
+                        ->default(Group::getActiveGroupId()),
                 ])
                 ->query(fn ($query, array $data) => $query->when($data['group_id'], fn ($q) => $q->where('group_id', $data['group_id']))),
 

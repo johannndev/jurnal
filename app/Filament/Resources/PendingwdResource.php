@@ -105,7 +105,11 @@ class PendingwdResource extends Resource
                     }),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('group_id')
+                    ->label('Group')
+                    ->relationship('operator.group', 'name')
+                    ->default(Group::getActiveGroupId())
+                    ->visible(fn () => auth()->user()->group_id == 0),
             ])
 
               ->actions([
@@ -369,7 +373,14 @@ class PendingwdResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $groupId = Group::getActiveGroupId();
+
         return parent::getEloquentQuery()
+            ->when($groupId, function ($query) use ($groupId) {
+                return $query->whereHas('operator', function ($q) use ($groupId) {
+                    $q->where('group_id', $groupId);
+                });
+            })
             ->orderBy('created_at', 'desc');
     }
 

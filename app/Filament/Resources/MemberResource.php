@@ -52,16 +52,8 @@ class MemberResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $user = auth()->user();
-
-
-        $gd = Group::where('is_default',1)->first();
-        $dft = 1;
-        if($gd){
-            $dft = $gd->id;
-        }
-
-        $groupId = request('group_id') ?? $dft; // default ke 1 jika tidak ada query string
+        $groupId = Group::getActiveGroupId();
+        
         return static::getModel()::query()
             ->when($groupId, fn ($query) => $query->where('group_id', $groupId))
             ->orderBy('created_at', 'desc');
@@ -70,8 +62,7 @@ class MemberResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $gd = Group::where('is_default', 1)->first();
-        $dft = $gd ? $gd->id : 1;
+        $dft = Group::getActiveGroupId();
 
         return $table
         
@@ -94,7 +85,7 @@ class MemberResource extends Resource
                     Select::make('group_id') // nama field yang digunakan di dalam form filter
                         ->label('Group')
                         ->options(Group::pluck('name', 'id')->toArray())
-                        ->default(fn () => request()->get('group_id', $dft)) // tetap bisa isi awal jika sudah terset
+                        ->default($dft)
                         ->live()
                         ->afterStateUpdated(function ($state) {
                             // redirect ke URL bersih
@@ -147,7 +138,7 @@ class MemberResource extends Resource
 
     public static function getWidgets(): array
     {
-        $groupId = request()->get('group_id', 1);
+        $groupId = Group::getActiveGroupId();
 
         return [
             MemberResource\Widgets\GroupStat::class,
