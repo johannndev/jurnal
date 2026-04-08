@@ -17,6 +17,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Grid;
@@ -105,11 +107,25 @@ class PendingwdResource extends Resource
                     }),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('group_id')
-                    ->label('Group')
-                    ->relationship('operator.group', 'name')
-                    ->default(Group::getActiveGroupId())
-                    ->visible(fn () => auth()->user()->group_id == 0),
+                Filter::make('by_group')
+                ->form([
+                    Select::make('group_id')
+                        ->label('Group')
+                        ->options(Group::pluck('name', 'id')->toArray())
+                        ->default(Group::getActiveGroupId())
+                        ->live()
+                        ->afterStateUpdated(function ($state) {
+                            return redirect('/admin/pendingwds' . ($state ? '?group_id=' . $state : ''));
+                        }),
+                ])
+                ->indicateUsing(function (array $data): ?string {
+                    if ($data['group_id'] ?? false) {
+                        $group = Group::find($data['group_id']);
+                        return 'Group: ' . ($group?->name ?? 'Unknown');
+                    }
+                    return null;
+                })
+                ->visible(fn () => auth()->user()->group_id == 0),
             ])
 
               ->actions([
@@ -137,7 +153,10 @@ class PendingwdResource extends Resource
                             ->disabled(),
                         Forms\Components\Select::make('wd_bank')
                             ->label('Rekening WD')
-                            ->relationship('bank', 'label')
+                            ->relationship('bank', 'label', function (Builder $query) {
+                                $groupId = Group::getActiveGroupId();
+                                return $query->when($groupId, fn ($q) => $q->where('group_id', $groupId));
+                            })
                             ->searchable()
                             ->preload()
                             ->required(),

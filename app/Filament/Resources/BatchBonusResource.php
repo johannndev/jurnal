@@ -47,11 +47,16 @@ class BatchBonusResource extends Resource
                 Forms\Components\Select::make('selectedGroup')
                     ->label('Pilih Group')
                     ->options(function () {
+                        $groupId = Group::getActiveGroupId();
+                        if ($groupId) {
+                            return Group::where('id', $groupId)->pluck('name', 'id');
+                        }
                         return Group::pluck('name', 'id');
                     })
+                    ->default(fn () => Group::getActiveGroupId())
                     ->disabled(function () {
                         $user = Auth::user();
-                        return $user->group_id !== null; // disable kalau user punya group
+                        return $user->group_id > 0; // disable kalau user punya group
                     }),
                     //->reactive()
                     //->afterStateUpdated(function ($state, $set, $livewire) {

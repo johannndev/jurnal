@@ -13,18 +13,12 @@ class GroupStat extends BaseWidget
 {
 
     public ?int $groupId = null;
-    public ?int $groupDefault = null;
 
     
     protected function getStats(): array
     {
-        if(isset($this->groupId)){
-            $gid = (int)$this->groupId;
-            $qs = '?group_id=' . $this->groupId;
-        }else{
-            $gid = $this->groupDefault;
-            $qs = '';
-        }
+        $gid = $this->groupId ?? Group::getActiveGroupId();
+        $qs = request()->has('group_id') ? '?group_id=' . $this->groupId : '';
         
         $stat = Group::find($gid);
 

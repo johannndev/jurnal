@@ -5,6 +5,8 @@ namespace App\Filament\Resources\TransaksiResource\Widgets;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
+use App\Models\Group;
+
 class TransactionSummaryWidget extends Widget
 {
     protected static string $view = 'filament.resources.transaksi-resource.widgets.transaction-summary-widget';
@@ -14,8 +16,13 @@ class TransactionSummaryWidget extends Widget
     {
         $startDate = request('tableFilters')['Tanggal']['start_date'] ?? null;
         $endDate = request('tableFilters')['Tanggal']['end_date'] ?? null;
+        $groupId = Group::getActiveGroupId();
 
         $query = DB::table('transactions');
+
+        if ($groupId) {
+            $query->where('group_id', $groupId);
+        }
 
         if ($startDate) {
             $query->whereDate('created_at', '>=', $startDate);

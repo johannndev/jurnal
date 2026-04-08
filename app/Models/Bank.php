@@ -19,4 +19,9 @@ class Bank extends Model
     {
         return $this->belongsTo(Bankname::class);
     }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
+    }
 }

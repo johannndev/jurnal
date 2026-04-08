@@ -27,6 +27,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Models\Group;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -39,6 +43,7 @@ class BankResource extends Resource implements HasShieldPermissions
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
+
     {
         return $form
             ->schema([
@@ -49,18 +54,34 @@ class BankResource extends Resource implements HasShieldPermissions
                         Forms\Components\TextInput::make('bank_nama')
                             ->required()
                             ->maxLength(255),
-                      
+
                     ])
                     ->required(),
                 Forms\Components\TextInput::make('bank_account_name')
                     ->required(),
                 Forms\Components\TextInput::make('bank_number')
                     ->required(),
+                Forms\Components\Select::make('group_id')
+                    ->relationship('group', 'name')
+                    ->default(fn () => auth()->user()->group_id > 0 ? auth()->user()->group_id : Group::getActiveGroupId())
+                    ->hidden(fn () => auth()->user()->group_id > 0)
+                    ->required(),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $groupId = Group::getActiveGroupId();
+
+        return static::getModel()::query()
+            ->when($groupId, fn ($query) => $query->where('group_id', $groupId))
+            ->orderBy('created_at', 'desc');
     }
 
     public static function table(Table $table): Table
     {
+        $dft = Group::getActiveGroupId();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('label'),
@@ -71,11 +92,31 @@ class BankResource extends Resource implements HasShieldPermissions
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_number'),
                 Tables\Columns\TextColumn::make('saldo')->numeric(locale: 'id'),
-                
+                Tables\Columns\TextColumn::make('group_id')->label('Group ID'),
             ])
             ->filters([
-                //
+                Filter::make('by_group') // nama dummy filter
+                ->form([
+                    Select::make('group_id') // nama field yang digunakan di dalam form filter
+                        ->label('Group')
+                        ->options(Group::pluck('name', 'id')->toArray())
+                        ->default($dft)
+                        ->live()
+                        ->afterStateUpdated(function ($state) {
+                            // redirect ke URL bersih
+                            return redirect('/admin/banks' . ($state ? '?group_id=' . $state : ''));
+                        }),
+                ])
+                ->indicateUsing(function (array $data): ?string {
+                    if ($data['group_id'] ?? false) {
+                        $group = Group::find($data['group_id']);
+                        return 'Group: ' . ($group?->name ?? 'Unknown');
+                    }
+                    return null;
+                })
+                ->visible(fn () => auth()->user()->group_id == 0),
             ])
+
             ->actions([
                 Tables\Actions\EditAction::make(),
                 ActionGroup::make([

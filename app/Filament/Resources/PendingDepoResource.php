@@ -56,7 +56,10 @@ class PendingdepoResource extends Resource
                             ->label('Rekening Depo')
                             ->required()
                             ->options(function () {
-                                return \App\Models\Bank::all()->pluck('label', 'id');
+                                $groupId = Group::getActiveGroupId();
+                                return \App\Models\Bank::when($groupId, fn ($query) => $query->where('group_id', $groupId))
+                                    ->get()
+                                    ->pluck('label', 'id');
                             })
                             ->extraAttributes([
                                 'id' => 'bank_id_select',

@@ -3,9 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\Group;
-use App\Models\Role;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,21 +11,20 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Radio;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Select;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationLabel = 'User'; // Nama di sidebar
+    protected static ?string $navigationLabel = 'User';
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static ?string $slug = 'user';
 
     protected static ?int $navigationSort = 5;
-    
 
     public static function form(Form $form): Form
     {
@@ -37,19 +34,35 @@ class UserResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('email')
                     ->required(),
-                Forms\Components\TextInput::make('password'),
+                Forms\Components\TextInput::make('password')
+                    ->password()
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->required(fn (string $context): bool => $context === 'create'),
                 Forms\Components\Select::make('roles')
-                    ->relationship('roles', 'name'),
+                    ->relationship('roles', 'name')
+                    ->preload()
+                    ->multiple(),
                 Forms\Components\Select::make('group_id')
                     ->relationship('group', 'name')
+                    ->default(fn () => auth()->user()->group_id > 0 ? auth()->user()->group_id : Group::getActiveGroupId())
+                    ->hidden(fn () => auth()->user()->group_id > 0)
                     ->required(),
-             
-                
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $groupId = Group::getActiveGroupId();
+        
+        return static::getModel()::query()
+            ->when($groupId, fn ($query) => $query->where('group_id', $groupId))
+            ->orderBy('created_at', 'desc');
     }
 
     public static function table(Table $table): Table
     {
+        $dft = Group::getActiveGroupId();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -59,7 +72,25 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('group.name')->label('Group'),
             ])
             ->filters([
-                //
+                Filter::make('by_group')
+                ->form([
+                    Select::make('group_id')
+                        ->label('Group')
+                        ->options(Group::pluck('name', 'id')->toArray())
+                        ->default($dft)
+                        ->live()
+                        ->afterStateUpdated(function ($state) {
+                            return redirect('/admin/user' . ($state ? '?group_id=' . $state : ''));
+                        }),
+                ])
+                ->indicateUsing(function (array $data): ?string {
+                    if ($data['group_id'] ?? false) {
+                        $group = Group::find($data['group_id']);
+                        return 'Group: ' . ($group?->name ?? 'Unknown');
+                    }
+                    return null;
+                })
+                ->visible(fn () => auth()->user()->group_id == 0),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

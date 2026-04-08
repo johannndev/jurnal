@@ -52,12 +52,11 @@ class CreateBatchBonus extends CreateRecord
     {
         parent::mount();
 
-        $user = Auth::user();
+        $groupId = Group::getActiveGroupId();
 
-        // Set default value
-        if( $user->group_id !== null){
+        if ($groupId) {
             $this->form->fill([
-                'selectedGroup' => $user->group_id,
+                'selectedGroup' => $groupId,
             ]);
         }
         

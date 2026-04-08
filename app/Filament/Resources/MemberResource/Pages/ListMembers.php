@@ -26,19 +26,12 @@ class ListMembers extends ListRecords
     protected function getHeaderWidgets(): array
     {
      
-        $groupId = request()->get('group_id');
-
-        $gd = Group::where('is_default',1)->first();
-        $dft = 1;
-        if($gd){
-            $dft = $gd->id;
-        }
+        $groupId = Group::getActiveGroupId();
 
         return [
             RealtimeClock::class,
             MemberResource\Widgets\GroupStat::make([
                 'groupId' =>  $groupId,
-                'groupDefault' =>  $dft,
             ])
         ];
         
