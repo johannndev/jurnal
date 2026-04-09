@@ -35,10 +35,10 @@ class TransaksiResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Dashboard';
+        return 'Transactions History';
     }
 
-    protected static ?string $modelLabel = 'Dashboard';
+    protected static ?string $modelLabel = 'Transactions History';
 
     public static function getSlug(): string
     {

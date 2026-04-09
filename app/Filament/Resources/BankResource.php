@@ -62,10 +62,10 @@ class BankResource extends Resource implements HasShieldPermissions
                 Forms\Components\TextInput::make('bank_number')
                     ->required(),
                 Forms\Components\Select::make('group_id')
-                    ->relationship('group', 'name')
-                    ->default(fn () => auth()->user()->group_id > 0 ? auth()->user()->group_id : Group::getActiveGroupId())
-                    ->hidden(fn () => auth()->user()->group_id > 0)
-                    ->required(),
+                    ->relationship('group', 'name', fn ($query) => $query->where('id', Group::getActiveGroupId()))
+                    ->default(fn () => Group::getActiveGroupId())
+                    ->required()
+                    ->dehydrated(),
             ]);
     }
 

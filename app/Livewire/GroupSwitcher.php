@@ -12,26 +12,26 @@ class GroupSwitcher extends Component
 
     public function mount()
     {
-        $this->activeGroupId = Group::getActiveGroupId();
+        // Ambil grup yang saat ini ditandai default di database (tabel groups)
+        $defaultGroup = Group::where('is_default', 1)->first();
+        $this->activeGroupId = $defaultGroup ? $defaultGroup->id : null;
     }
 
     public function updatedActiveGroupId($value)
     {
-        Session::put('active_group_id', $value);
+        // Reset semua grup agar tidak default
+        \App\Models\Group::query()->update(['is_default' => 0]);
+
+        // Set grup yang dipilih menjadi default di database
+        \App\Models\Group::where('id', $value)->update(['is_default' => 1]);
         
-        // Refresh the page to apply changes across all resources
+        // Refresh halaman
         return redirect(request()->header('Referer'));
     }
 
     public function render()
     {
-        // Only show for admins (group_id == 0)
-        if (auth()->user()->group_id > 0) {
-            return <<<'blade'
-                <div></div>
-            blade;
-        }
-
+        // Tetap tampilkan agar admin bisa ganti-ganti grup kapan saja
         $groups = Group::all();
 
         return view('livewire.group-switcher', [

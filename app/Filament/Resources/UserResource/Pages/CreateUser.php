@@ -12,15 +12,6 @@ class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        if (!isset($data['group_id']) || empty($data['group_id'])) {
-            $data['group_id'] = auth()->user()->group_id > 0 ? auth()->user()->group_id : Group::getActiveGroupId();
-        }
-
-        return $data;
-    }
-
     public function getTitle(): string
     {
         return 'Create Operator'; // Ubah heading di halaman user

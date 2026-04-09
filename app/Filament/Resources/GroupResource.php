@@ -31,9 +31,10 @@ class GroupResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required(),
-                Forms\Components\Checkbox::make('is_default')
+                Forms\Components\Toggle::make('is_default')
                     ->label('Default')
-                    ->inline(false),
+                    ->live()
+                    ->dehydrated(),
                 // Forms\Components\TextInput::make('koin')
                 //     ->default(0)
                 //     ->required(),
