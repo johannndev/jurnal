@@ -36,7 +36,14 @@ class UserResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('password')
                     ->password()
+                    ->label('New Password')
                     ->dehydrated(fn ($state) => filled($state))
+                    ->required(fn (string $context): bool => $context === 'create')
+                    ->confirmed(),
+                Forms\Components\TextInput::make('password_confirmation')
+                    ->password()
+                    ->label('Confirm New Password')
+                    ->dehydrated(false)
                     ->required(fn (string $context): bool => $context === 'create'),
                 Forms\Components\Select::make('roles')
                     ->relationship('roles', 'name')
