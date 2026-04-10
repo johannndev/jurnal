@@ -33,7 +33,7 @@ class PendingdepoResource extends Resource
 
      protected static ?string $modelLabel = 'Pending Deposit';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
 
     protected static ?string $navigationLabel = 'Pending Deposit';
 

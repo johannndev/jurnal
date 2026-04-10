@@ -37,7 +37,7 @@ class PendingwdResource extends Resource
 
     protected static ?string $modelLabel = 'Pending Withdraw';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-up-tray';
 
     protected static ?string $navigationLabel = 'Pending Withdraw';
 

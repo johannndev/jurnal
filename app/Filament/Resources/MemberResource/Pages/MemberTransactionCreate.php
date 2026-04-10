@@ -145,7 +145,11 @@ class MemberTransactionCreate extends Page
                 ->schema([
                     Forms\Components\Select::make('bank_id')
                         ->label('Rekening Depo')
-                        ->options(Bank::pluck('label', 'id')) 
+                        ->options(function () {
+                            $groupId = Group::getActiveGroupId();
+                            return Bank::when($groupId, fn ($query) => $query->where('group_id', $groupId))
+                                ->pluck('label', 'id');
+                        }) 
                         ->required(),
                     Forms\Components\TextInput::make('amount')
                         ->numeric()

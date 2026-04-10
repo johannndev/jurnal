@@ -21,7 +21,7 @@ class BatchBonusResource extends Resource
     protected static ?string $model = BonusBatch::class;
     
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-gift';
 
     protected static ?string $modelLabel = 'Batch Bonus Koin';
 
