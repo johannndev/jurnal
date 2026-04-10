@@ -79,69 +79,74 @@ class TransaksiResource extends Resource
                     ->getStateUsing(fn ($record) => $record->type === 'withdraw' ? ($record->bank->label ?? '-') : '-'),
             ])
             ->filters([
-               // Filter Tanggal
-            Filter::make('Tanggal')
-                ->form([
-                    DatePicker::make('start_date')->label('Dari'),
-                    DatePicker::make('end_date')->label('Sampai'),
-                ])
-                ->query(function ($query, array $data) {
-                    return $query
-                        ->when($data['start_date'], fn ($q) => $q->whereDate('created_at', '>=', $data['start_date']))
-                        ->when($data['end_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['end_date']));
-                }),
+                // Filter Tanggal
+                Filter::make('Tanggal')
+                    ->form([
+                        DatePicker::make('start_date')->label('Dari'),
+                        DatePicker::make('end_date')->label('Sampai'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['start_date'], fn ($q) => $q->whereDate('created_at', '>=', $data['start_date']))
+                            ->when($data['end_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['end_date']));
+                    }),
 
-            // Filter Type: All, Deposit Only, Withdraw Only
-            Filter::make('type')
-                ->label('Tipe Transaksi')
-                ->form([
-                    Select::make('type')
-                        ->options([
-                            'all' => 'All',
-                            'deposit' => 'Deposit Only',
-                            'withdraw' => 'Withdraw Only',
-                        ])
-                        ->default('all'),
-                ])
-                ->query(function ($query, array $data) {
-                    return $query
-                        ->when($data['type'] === 'deposit', fn ($q) => $q->whereNotNull('deposit')->where('deposit', '>', 0))
-                        ->when($data['type'] === 'withdraw', fn ($q) => $q->whereNotNull('withdraw')->where('withdraw', '>', 0));
-                }),
+                // Filter Type: All, Deposit Only, Withdraw Only
+                Filter::make('type')
+                    ->label('Tipe Transaksi')
+                    ->form([
+                        Select::make('type')
+                            ->options([
+                                'all' => 'All',
+                                'deposit' => 'Deposit Only',
+                                'withdraw' => 'Withdraw Only',
+                            ])
+                            ->default('all'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['type'] === 'deposit', fn ($q) => $q->whereNotNull('deposit')->where('deposit', '>', 0))
+                            ->when($data['type'] === 'withdraw', fn ($q) => $q->whereNotNull('withdraw')->where('withdraw', '>', 0));
+                    }),
 
-            // Filter Operator
-            Filter::make('operator_id')
-                ->form([
-                    Select::make('operator_id')
-                        ->label('Operator')
-                        ->searchable()
-                        ->options(fn () => DB::table('users')->pluck('name', 'id')->toArray()),
-                ])
-                ->query(fn ($query, array $data) => $query->when($data['operator_id'], fn ($q) => $q->where('operator_id', $data['operator_id']))),
+                // Filter Operator
+                Filter::make('operator_id')
+                    ->form([
+                        Select::make('operator_id')
+                            ->label('Operator')
+                            ->searchable()
+                            ->options(fn () => DB::table('users')->pluck('name', 'id')->toArray()),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when($data['operator_id'], fn ($q) => $q->where('operator_id', $data['operator_id']))),
 
-            // Filter Group
-            Filter::make('group_id')
-                ->form([
-                    Select::make('group_id')
-                        ->label('Group')
-                        ->searchable()
-                        ->options(fn () => DB::table('groups')->pluck('name', 'id')->toArray())
-                        ->default(Group::getActiveGroupId()),
-                ])
-                ->query(fn ($query, array $data) => $query->when($data['group_id'], fn ($q) => $q->where('group_id', $data['group_id']))),
+                // Filter Group
+                Filter::make('group_id')
+                    ->form([
+                        Select::make('group_id')
+                            ->label('Group')
+                            ->searchable()
+                            ->options(fn () => DB::table('groups')->pluck('name', 'id')->toArray())
+                            ->default(Group::getActiveGroupId()),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when($data['group_id'], fn ($q) => $q->where('group_id', $data['group_id']))),
 
             // Filter Member
-            Filter::make('member_id')
+            Filter::make('member_search')
                 ->form([
-                    Select::make('member_id')
-                        ->label('Member')
-                        ->searchable()
-                        ->options(fn () => DB::table('members')->pluck('username', 'id')->toArray()),
+                    Forms\Components\TextInput::make('username')
+                        ->label('Member (Username)')
+                        ->placeholder('Input username...')
+                        ->live(false),
                 ])
-                ->query(fn ($query, array $data) => $query->when($data['member_id'], fn ($q) => $q->where('member_id', $data['member_id']))),
-            ])
-            ->actions([
-                // Tables\Actions\EditAction::make(),
+                ->query(function (Builder $query, array $data) {
+                    return $query->when($data['username'], function ($q) use ($data) {
+                        return $q->whereHas('member', fn ($mq) => $mq->where('username', $data['username']));
+                    });
+                }),
+        ], layout: Tables\Enums\FiltersLayout::AboveContent)
+        ->filtersFormColumns(1)
+        ->deferFilters()
+            ->actions([                // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 // Tables\Actions\BulkActionGroup::make([

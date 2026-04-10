@@ -38,8 +38,15 @@ class TransactionResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('member_id')
-                    ->relationship('member', 'username', fn ($query) => $query->where('group_id', Group::getActiveGroupId()))
+                    ->label('Member')
                     ->searchable()
+                    ->getSearchResultsUsing(fn (string $search): array => Member::where('group_id', Group::getActiveGroupId())
+                        ->where('username', 'like', "%{$search}%")
+                        ->limit(50)
+                        ->pluck('username', 'id')
+                        ->toArray()
+                    )
+                    ->getOptionLabelUsing(fn ($value): ?string => Member::find($value)?->username)
                     ->required(),
                 Forms\Components\Select::make('bank_id')
                     ->relationship('bank', 'label', fn ($query) => $query->where('group_id', Group::getActiveGroupId()))
@@ -77,8 +84,7 @@ class TransactionResource extends Resource
                     ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('member.username')
-                    ->label('Member')
-                    ->searchable(),
+                    ->label('Member'),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Tipe')
                     ->badge()
@@ -102,48 +108,80 @@ class TransactionResource extends Resource
                     ->label('Operator'),
             ])
             ->filters([
-                SelectFilter::make('member_id')
-                    ->label('Cari Member')
-                    ->searchable()
-                    ->options(fn () => Member::where('group_id', Group::getActiveGroupId())->pluck('username', 'id'))
+                Tables\Filters\Filter::make('member_search')
+                    ->form([
+                        Forms\Components\TextInput::make('username')
+                            ->label('Cari Username Member')
+                            ->placeholder('Input username...')
+                            ->live(false),
+                    ])
                     ->query(function (Builder $query, array $data) {
-                        if (!empty($data['value'])) {
-                            $query->where('member_id', $data['value']);
+                        if (!empty($data['username'])) {
+                            $query->whereHas('member', fn ($q) => $q->where('username', $data['username'])
+                                ->where('group_id', Group::getActiveGroupId())
+                            );
                         } else {
                             $query->whereRaw('1 = 0');
                         }
                     }),
             ], layout: Tables\Enums\FiltersLayout::AboveContent)
+            ->filtersFormColumns(1)
+            ->deferFilters()
             ->headerActions([
                 Action::make('deposit')
                     ->label('Deposit')
                     ->color('success')
                     ->icon('heroicon-o-arrow-down-circle')
-                    ->visible(fn ($livewire) => !empty($livewire->tableFilters['member_id']['value']))
+                    ->visible(fn ($livewire) => 
+                        !empty($livewire->tableFilters['member_search']['username']) &&
+                        Member::where('username', $livewire->tableFilters['member_search']['username'])
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->exists()
+                    )
                     ->form(fn () => static::getTransactionForm('deposit'))
                     ->action(function (array $data, $livewire) {
-                        $memberId = $livewire->tableFilters['member_id']['value'];
-                        $member = Member::find($memberId);
-                        static::executeTransaction($member, 'deposit', $data);
+                        $username = $livewire->tableFilters['member_search']['username'];
+                        $member = Member::where('username', $username)
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->first();
+                        
+                        if ($member) {
+                            static::executeTransaction($member, 'deposit', $data);
+                        }
                     }),
 
                 Action::make('withdraw')
                     ->label('Withdraw')
                     ->color('danger')
                     ->icon('heroicon-o-arrow-up-circle')
-                    ->visible(fn ($livewire) => !empty($livewire->tableFilters['member_id']['value']))
+                    ->visible(fn ($livewire) => 
+                        !empty($livewire->tableFilters['member_search']['username']) &&
+                        Member::where('username', $livewire->tableFilters['member_search']['username'])
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->exists()
+                    )
                     ->form(fn () => static::getTransactionForm('withdraw'))
                     ->action(function (array $data, $livewire) {
-                        $memberId = $livewire->tableFilters['member_id']['value'];
-                        $member = Member::find($memberId);
-                        static::executeTransaction($member, 'withdraw', $data);
+                        $username = $livewire->tableFilters['member_search']['username'];
+                        $member = Member::where('username', $username)
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->first();
+                        
+                        if ($member) {
+                            static::executeTransaction($member, 'withdraw', $data);
+                        }
                     }),
 
                 Action::make('bonus')
                     ->label('Bonus Koin')
                     ->color('warning')
                     ->icon('heroicon-o-gift')
-                    ->visible(fn ($livewire) => !empty($livewire->tableFilters['member_id']['value']))
+                    ->visible(fn ($livewire) => 
+                        !empty($livewire->tableFilters['member_search']['username']) &&
+                        Member::where('username', $livewire->tableFilters['member_search']['username'])
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->exists()
+                    )
                     ->form([
                         Forms\Components\TextInput::make('amount')
                             ->label('Jumlah Bonus')
@@ -153,9 +191,14 @@ class TransactionResource extends Resource
                             ->label('Keterangan'),
                     ])
                     ->action(function (array $data, $livewire) {
-                        $memberId = $livewire->tableFilters['member_id']['value'];
-                        $member = Member::find($memberId);
-                        static::executeBonusKoin($member, $data);
+                        $username = $livewire->tableFilters['member_search']['username'];
+                        $member = Member::where('username', $username)
+                            ->where('group_id', Group::getActiveGroupId())
+                            ->first();
+                        
+                        if ($member) {
+                            static::executeBonusKoin($member, $data);
+                        }
                     }),
             ])
             ->actions([
