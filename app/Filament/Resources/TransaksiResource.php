@@ -78,6 +78,7 @@ class TransaksiResource extends Resource
                     ->label('Rekening Withdraw')
                     ->getStateUsing(fn ($record) => $record->type === 'withdraw' ? ($record->bank->label ?? '-') : '-'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 // Filter Tanggal
                 Filter::make('Tanggal')

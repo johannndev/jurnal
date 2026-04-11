@@ -114,7 +114,7 @@ class PendingdepoResource extends Resource
                         default => ucfirst($state),
                     }),
             ])
-         
+            ->defaultSort('created_at', 'desc')
             ->actions([
                 Action::make('proses')
                     ->label('Proses')

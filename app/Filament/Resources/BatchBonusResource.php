@@ -205,6 +205,7 @@ class BatchBonusResource extends Resource
             ->columns([
                 //
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

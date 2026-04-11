@@ -102,11 +102,16 @@ class TransactionResource extends Resource
                     ->label('Withdraw')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('bonus')
+                    ->label('Bonus')
+                    ->money('IDR')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('bank.label')
                     ->label('Rekening'),
                 Tables\Columns\TextColumn::make('operator.name')
                     ->label('Operator'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\Filter::make('member_search')
                     ->form([

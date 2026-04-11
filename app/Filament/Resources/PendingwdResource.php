@@ -106,6 +106,7 @@ class PendingwdResource extends Resource
                         default => ucfirst($state),
                     }),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Filter::make('by_group')
                 ->form([

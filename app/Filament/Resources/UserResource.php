@@ -78,6 +78,7 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('group.name')->label('Group'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Filter::make('by_group')
                 ->form([

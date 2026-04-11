@@ -59,6 +59,7 @@ class GroupResource extends Resource
                     ->falseIcon('') // kosong jika 0
                     ->trueColor('success'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

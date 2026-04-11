@@ -94,6 +94,7 @@ class BankResource extends Resource implements HasShieldPermissions
                 Tables\Columns\TextColumn::make('saldo')->numeric(locale: 'id'),
                 Tables\Columns\TextColumn::make('group_id')->label('Group ID'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Filter::make('by_group') // nama dummy filter
                 ->form([
