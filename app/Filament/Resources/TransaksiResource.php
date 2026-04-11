@@ -143,7 +143,7 @@ class TransaksiResource extends Resource
                         return $q->whereHas('member', fn ($mq) => $mq->where('username', $data['username']));
                     });
                 }),
-        ], layout: Tables\Enums\FiltersLayout::AboveContent)
+        ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
         ->filtersFormColumns(1)
         ->deferFilters()
             ->actions([                // Tables\Actions\EditAction::make(),

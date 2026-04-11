@@ -339,12 +339,13 @@ class TransactionResource extends Resource
                 'group_id' => $member->group_id,
                 'operator_id' => Auth::id(),
                 'member_id' => $member->id,
+                'first_depo' => 'X',
                 'type' => 'bonus',
                 'bonus' => $amount,
                 'total' => $amount,
                 'deposit' => 0,
                 'withdraw' => 0,
-                'bank_id' => 0, // ID dummy atau buat kolom bank_id nullable
+                'bank_id' => null, // ID dummy atau buat kolom bank_id nullable
                 'note' => $data['note'] ?? 'Bonus Koin',
             ]);
         });
