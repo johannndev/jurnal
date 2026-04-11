@@ -42,29 +42,62 @@ class MemberResource extends Resource
                         ])->render()
                     ) : null)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('name')
-                    ->required(),
-                Forms\Components\TextInput::make('username')
-                    ->required(),
-                Forms\Components\TextInput::make('phone')
-                    ->required(),
-                Forms\Components\TextInput::make('bank_name')
-                    ->required(),
-                Forms\Components\TextInput::make('bank_number')
-                    ->required()
-                    ->rules([
-                        fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
-                            $blacklisted = \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $value)->first();
-                            if ($blacklisted) {
-                                $fail("Nomor rekening terdaftar di blacklist.");
-                            }
-                        },
+                Forms\Components\Grid::make(1)
+                    ->schema([
+                        Forms\Components\TextInput::make('username')
+                            ->required(),
+                        Forms\Components\Select::make('group_id')
+                            ->label('Site Name')
+                            ->relationship('group', 'name', fn ($query) => $query->where('id', Group::getActiveGroupId()))
+                            ->default(fn () => Group::getActiveGroupId())
+                            ->required()
+                            ->dehydrated(),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nama Member')
+                            ->required(),
+                        Forms\Components\TextInput::make('phone')
+                            ->label('No. Handphone')
+                            ->required(),
+                        Forms\Components\TextInput::make('email')
+                            ->email(),
+                        Forms\Components\Select::make('bank_name')
+                            ->label('Nama Bank')
+                            ->options(\App\Models\Bankname::pluck('bank_nama', 'bank_nama')->toArray())
+                            ->searchable()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('bank_nama')
+                                    ->required()
+                                    ->maxLength(255),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                return \App\Models\Bankname::create($data)->bank_nama;
+                            })
+                            ->required(),
+                        Forms\Components\TextInput::make('bank_number')
+                            ->label('No Rekening')
+                            ->required()
+                            ->rules([
+                                fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                    $blacklisted = \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $value)->first();
+                                    if ($blacklisted) {
+                                        $fail("Nomor rekening terdaftar di blacklist.");
+                                    }
+                                },
+                            ]),
+                        Forms\Components\Select::make('rek_depo')
+                            ->label('Rek Depo')
+                            ->options(function () {
+                                return \App\Models\Bank::with('bankname')
+                                    ->get()
+                                    ->mapWithKeys(function ($bank) {
+                                        $label = "{$bank->bankname?->bank_nama} / {$bank->bank_number} / {$bank->bank_account_name}";
+                                        return [$label => $label];
+                                    })
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->required(),
                     ]),
-                Forms\Components\Select::make('group_id')
-                    ->relationship('group', 'name', fn ($query) => $query->where('id', Group::getActiveGroupId()))
-                    ->default(fn () => Group::getActiveGroupId())
-                    ->required()
-                    ->dehydrated(),
             ]);
     }
 
