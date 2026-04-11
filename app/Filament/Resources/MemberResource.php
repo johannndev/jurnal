@@ -4,9 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MemberResource\Pages;
 use App\Filament\Resources\MemberResource\Pages\MemberTransaction;
-use App\Filament\Resources\MemberResource\RelationManagers;
 use App\Models\Group;
 use App\Models\Member;
+use App\Models\BankBlacklist;
 use Filament\Tables\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Notifications\Notification;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -33,29 +34,14 @@ class MemberResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Placeholder::make('blacklist_alert')
-                    ->hiddenLabel()
-                    ->hidden(fn ($get) => ! \App\Models\BankBlacklist::where('nomor_rekening', $get('bank_number'))->exists())
-                    ->content(fn ($get) => $get('bank_number') ? new \Illuminate\Support\HtmlString(
-                        view('components.blacklist-alert', [
-                            'blacklist' => \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $get('bank_number'))->first()
-                        ])->render()
-                    ) : null)
-                    ->columnSpanFull(),
                 Forms\Components\Grid::make(1)
                     ->schema([
                         Forms\Components\TextInput::make('username')
                             ->required(),
                         Forms\Components\Select::make('group_id')
                             ->label('Site Name')
-                            ->relationship('group', 'name', function ($query) {
-                                if (auth()->user()->group_id > 0) {
-                                    return $query->where('id', auth()->user()->group_id);
-                                }
-                                return $query;
-                            })
+                            ->options(fn () => Group::where('id', Group::getActiveGroupId())->pluck('name', 'id'))
                             ->default(fn () => Group::getActiveGroupId())
-                            ->live()
                             ->required()
                             ->dehydrated(),
                         Forms\Components\TextInput::make('name')
@@ -65,7 +51,9 @@ class MemberResource extends Resource
                             ->label('No. Handphone')
                             ->required(),
                         Forms\Components\TextInput::make('email')
-                            ->email(),
+                            ->label('Email')
+                            ->suffix('@gmail.com')
+                            ->dehydrateStateUsing(fn ($state) => !empty($state) && !str_contains($state, '@') ? $state . '@gmail.com' : $state),
                         Forms\Components\Select::make('bank_name')
                             ->label('Nama Bank')
                             ->options(\App\Models\Bankname::pluck('bank_nama', 'bank_nama')->toArray())
@@ -81,15 +69,7 @@ class MemberResource extends Resource
                             ->required(),
                         Forms\Components\TextInput::make('bank_number')
                             ->label('No Rekening')
-                            ->required()
-                            ->rules([
-                                fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
-                                    $blacklisted = \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $value)->first();
-                                    if ($blacklisted) {
-                                        $fail("Nomor rekening terdaftar di blacklist.");
-                                    }
-                                },
-                            ]),
+                            ->required(),
                         Forms\Components\Select::make('rek_depo')
                             ->label('Rek Depo')
                             ->options(function (Forms\Get $get) {
@@ -108,6 +88,10 @@ class MemberResource extends Resource
                             })
                             ->searchable()
                             ->required(),
+                        Forms\Components\Placeholder::make('blacklist_modal_trigger')
+                            ->hiddenLabel()
+                            ->content(fn () => view('filament.resources.member.blacklist-modal'))
+                            ->columnSpanFull(),
                     ]),
             ]);
     }
@@ -135,6 +119,9 @@ class MemberResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable()
+                    ->suffix(fn ($state) => $state && !str_contains($state, '@') ? '@gmail.com' : ''),
                 Tables\Columns\TextColumn::make('bank_name'),
                 Tables\Columns\TextColumn::make('bank_number'),
                 Tables\Columns\TextColumn::make('group.name')->label('Group'),
