@@ -35,15 +35,15 @@ class Group extends Model
             return (int) $user->group_id;
         }
 
-        // PRIORITAS 2 (Master): Selalu gunakan grup yang ditandai is_default di tabel groups
+        // PRIORITAS 2: Jika ada parameter group_id di URL (untuk Master agar bisa ganti-ganti group)
+        if (request()->has('group_id')) {
+            return (int) request('group_id');
+        }
+
+        // PRIORITAS 3 (Master): Gunakan grup yang ditandai is_default di tabel groups
         $defaultGroup = self::where('is_default', 1)->first();
         if ($defaultGroup) {
             return (int) $defaultGroup->id;
-        }
-
-        // PRIORITAS 3 (Fallback)
-        if (request()->has('group_id')) {
-            return (int) request('group_id');
         }
 
         return 1;

@@ -48,8 +48,14 @@ class MemberResource extends Resource
                             ->required(),
                         Forms\Components\Select::make('group_id')
                             ->label('Site Name')
-                            ->relationship('group', 'name', fn ($query) => $query->where('id', Group::getActiveGroupId()))
+                            ->relationship('group', 'name', function ($query) {
+                                if (auth()->user()->group_id > 0) {
+                                    return $query->where('id', auth()->user()->group_id);
+                                }
+                                return $query;
+                            })
                             ->default(fn () => Group::getActiveGroupId())
+                            ->live()
                             ->required()
                             ->dehydrated(),
                         Forms\Components\TextInput::make('name')
@@ -86,8 +92,13 @@ class MemberResource extends Resource
                             ]),
                         Forms\Components\Select::make('rek_depo')
                             ->label('Rek Depo')
-                            ->options(function () {
+                            ->options(function (Forms\Get $get) {
+                                $groupId = $get('group_id');
+                                if (!$groupId) {
+                                    return [];
+                                }
                                 return \App\Models\Bank::with('bankname')
+                                    ->where('group_id', $groupId)
                                     ->get()
                                     ->mapWithKeys(function ($bank) {
                                         $label = "{$bank->bankname?->bank_nama} / {$bank->bank_number} / {$bank->bank_account_name}";
