@@ -33,6 +33,15 @@ class MemberResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\Placeholder::make('blacklist_alert')
+                    ->hiddenLabel()
+                    ->hidden(fn ($get) => ! \App\Models\BankBlacklist::where('nomor_rekening', $get('bank_number'))->exists())
+                    ->content(fn ($get) => $get('bank_number') ? new \Illuminate\Support\HtmlString(
+                        view('components.blacklist-alert', [
+                            'blacklist' => \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $get('bank_number'))->first()
+                        ])->render()
+                    ) : null)
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('username')
@@ -42,7 +51,15 @@ class MemberResource extends Resource
                 Forms\Components\TextInput::make('bank_name')
                     ->required(),
                 Forms\Components\TextInput::make('bank_number')
-                    ->required(),
+                    ->required()
+                    ->rules([
+                        fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
+                            $blacklisted = \App\Models\BankBlacklist::with('bankname')->where('nomor_rekening', $value)->first();
+                            if ($blacklisted) {
+                                $fail("Nomor rekening terdaftar di blacklist.");
+                            }
+                        },
+                    ]),
                 Forms\Components\Select::make('group_id')
                     ->relationship('group', 'name', fn ($query) => $query->where('id', Group::getActiveGroupId()))
                     ->default(fn () => Group::getActiveGroupId())
