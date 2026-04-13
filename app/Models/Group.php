@@ -11,6 +11,8 @@ class Group extends Model
 
     protected $casts = [
         'is_default' => 'boolean',
+        'is_coin_system' => 'boolean',
+        'is_non_coin_system' => 'boolean',
     ];
 
     protected static function booted()

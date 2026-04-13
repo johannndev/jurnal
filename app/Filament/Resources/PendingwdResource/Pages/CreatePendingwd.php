@@ -78,7 +78,8 @@ class CreatePendingwd extends CreateRecord
          
 
             $member = Member::with('group')->where('id', $data['member'])->first();
-      
+            $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
+            $systemType = $group->is_coin_system ? 'coin' : 'non-coin';
 
             $pendingwd = Pendingwd::create([
                 'operator_id' => $data['operator_id'],
@@ -89,20 +90,22 @@ class CreatePendingwd extends CreateRecord
                 'nominal' =>  $data['nominal'],
             ]);
 
-            $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
-
-            $group->increment('koin', $data['nominal']);
+            // Both: Group saldo decrease
             $group->decrement('saldo', $data['nominal']);
 
-            $history = Koinhistory::create([
-                'group_id' => Auth::user()->group_id,
-                'keterangan' => 'Withdraw gantung',
-                'member_id' =>   $member->id,
-                'koin' => $data['nominal'],
-                'saldo' => $group->saldo,
-                'operator_id' => Auth::id(),
-                
-            ]);
+            if ($systemType === 'coin') {
+                $group->increment('koin', $data['nominal']);
+
+                $history = Koinhistory::create([
+                    'group_id' => Auth::user()->group_id,
+                    'keterangan' => 'Withdraw gantung',
+                    'member_id' =>   $member->id,
+                    'koin' => $data['nominal'],
+                    'saldo' => $group->saldo,
+                    'operator_id' => Auth::id(),
+                    
+                ]);
+            }
 
             return  $pendingwd;
 

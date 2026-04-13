@@ -94,6 +94,14 @@ class TransactionResource extends Resource
                         'bonus' => 'warning',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('system_type')
+                    ->label('System')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'coin' => 'primary',
+                        'non-coin' => 'warning',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('deposit')
                     ->label('Deposit')
                     ->money('IDR')
@@ -185,6 +193,7 @@ class TransactionResource extends Resource
                         !empty($livewire->tableFilters['member_search']['username']) &&
                         Member::where('username', $livewire->tableFilters['member_search']['username'])
                             ->where('group_id', Group::getActiveGroupId())
+                            ->whereHas('group', fn ($q) => $q->where('is_coin_system', true))
                             ->exists()
                     )
                     ->form([
@@ -224,6 +233,31 @@ class TransactionResource extends Resource
         return [
             Forms\Components\Grid::make(2)
                 ->schema([
+                    Forms\Components\Select::make('system_type')
+                        ->label('System Type')
+                        ->options(function () {
+                            $groupId = Group::getActiveGroupId();
+                            $group = Group::find($groupId);
+                            $options = [];
+                            if ($group) {
+                                if ($group->is_coin_system) $options['coin'] = 'Coin System';
+                                if ($group->is_non_coin_system) $options['non-coin'] = 'Non-Coin System';
+                            }
+                            // Default fallback if none checked
+                            if (empty($options)) $options['coin'] = 'Coin System';
+                            return $options;
+                        })
+                        ->default(function () {
+                            $groupId = Group::getActiveGroupId();
+                            $group = Group::find($groupId);
+                            if ($group) {
+                                if ($group->is_coin_system && !$group->is_non_coin_system) return 'coin';
+                                if (!$group->is_coin_system && $group->is_non_coin_system) return 'non-coin';
+                            }
+                            return 'coin';
+                        })
+                        ->disableOptionWhen(fn () => false) // dummy to trigger refresh if needed
+                        ->required(),
                     Forms\Components\Select::make('bank_id')
                         ->label($type === 'deposit' ? 'Rekening Depo' : 'Rekening WD')
                         ->options(function () {
@@ -257,8 +291,9 @@ class TransactionResource extends Resource
         $fee = (float) ($data['fee'] ?? 0);
         $bonus = (float) ($data['bonus'] ?? 0);
         $total = $amount - $fee + $bonus;
+        $systemType = $data['system_type'] ?? 'coin';
 
-        DB::transaction(function () use ($member, $type, $data, $amount, $fee, $bonus, $total) {
+        DB::transaction(function () use ($member, $type, $data, $amount, $fee, $bonus, $total, $systemType) {
             $firstDepo = 'N';
             if ($member->first_depo == 'Y' && $type === 'deposit') {
                 $firstDepo = 'Y';
@@ -276,6 +311,7 @@ class TransactionResource extends Resource
                 'bonus' => $bonus,
                 'note' => $data['note'] ?? null,
                 'type' => $type,
+                'system_type' => $systemType,
                 'deposit' => $type === 'deposit' ? $amount : 0,
                 'withdraw' => $type === 'withdraw' ? $amount : 0,
             ]);
@@ -284,25 +320,35 @@ class TransactionResource extends Resource
             $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
 
             if ($type === 'deposit') {
+                // Both systems: bank and group saldo increase
                 $bank->increment('saldo', $total);
-                $group->decrement('koin', $total);
                 $group->increment('saldo', $total);
-                $koinValue = -$total;
-            } else {
+                
+                if ($systemType === 'coin') {
+                    $group->decrement('koin', $total);
+                    $koinValue = -$total;
+                }
+            } else { // withdraw
+                // Both systems: bank and group saldo decrease
                 $bank->decrement('saldo', $total);
-                $group->increment('koin', $total);
                 $group->decrement('saldo', $total);
-                $koinValue = $total;
+                
+                if ($systemType === 'coin') {
+                    $group->increment('koin', $total);
+                    $koinValue = $total;
+                }
             }
 
-            Koinhistory::create([
-                'group_id' => $member->group_id,
-                'keterangan' => $type,
-                'member_id' => $member->id,
-                'koin' => $koinValue,
-                'saldo' => $group->saldo,
-                'operator_id' => Auth::id(),
-            ]);
+            if ($systemType === 'coin') {
+                Koinhistory::create([
+                    'group_id' => $member->group_id,
+                    'keterangan' => $type,
+                    'member_id' => $member->id,
+                    'koin' => $koinValue,
+                    'saldo' => $group->saldo,
+                    'operator_id' => Auth::id(),
+                ]);
+            }
 
             Logtransaksi::create([
                 'operator_id' => Auth::id(),
@@ -329,6 +375,8 @@ class TransactionResource extends Resource
 
         DB::transaction(function () use ($member, $data, $amount) {
             $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
+            
+            // Bonus is ONLY for coin system based on rule
             $group->decrement('koin', $amount);
 
             Koinhistory::create([
@@ -346,11 +394,12 @@ class TransactionResource extends Resource
                 'member_id' => $member->id,
                 'first_depo' => 'X',
                 'type' => 'bonus',
+                'system_type' => 'coin',
                 'bonus' => $amount,
                 'total' => $amount,
                 'deposit' => 0,
                 'withdraw' => 0,
-                'bank_id' => null, // ID dummy atau buat kolom bank_id nullable
+                'bank_id' => null,
                 'note' => $data['note'] ?? 'Bonus Koin',
             ]);
         });

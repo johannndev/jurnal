@@ -35,6 +35,12 @@ class GroupResource extends Resource
                     ->label('Default')
                     ->live()
                     ->dehydrated(),
+                Forms\Components\Toggle::make('is_coin_system')
+                    ->label('Coin System')
+                    ->default(false),
+                Forms\Components\Toggle::make('is_non_coin_system')
+                    ->label('Non-Coin System')
+                    ->default(false),
                 // Forms\Components\TextInput::make('koin')
                 //     ->default(0)
                 //     ->required(),
@@ -53,6 +59,12 @@ class GroupResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('koin')->numeric(locale: 'id'),
                 Tables\Columns\TextColumn::make('saldo')->numeric(locale: 'id'),
+                Tables\Columns\IconColumn::make('is_coin_system')
+                    ->label('Coin System')
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('is_non_coin_system')
+                    ->label('Non-Coin System')
+                    ->boolean(),
                 Tables\Columns\IconColumn::make('is_default')
                     ->boolean() // Otomatis tampilkan ceklis dan silang
                     ->trueIcon('heroicon-o-check-circle') // default sudah check
@@ -99,7 +111,7 @@ class GroupResource extends Resource
                     })
  
                     ->visible(fn ($record) =>
-                        auth()->user()->hasPermissionTo('view_group')
+                        auth()->user()->hasPermissionTo('view_group') && $record->is_coin_system
                     ),
                 Tables\Actions\EditAction::make(),
             ])

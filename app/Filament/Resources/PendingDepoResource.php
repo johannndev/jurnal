@@ -171,6 +171,10 @@ class PendingdepoResource extends Resource
                                 $member->update(['first_depo' => 'N']);
                             }
 
+                            $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
+
+                            $systemType = $group->is_coin_system ? 'coin' : 'non-coin';
+
                             $transaction = Transaction::create([
                                 'group_id' =>   $member->group_id,
                                 'operator_id' =>  Auth::id(),
@@ -182,28 +186,33 @@ class PendingdepoResource extends Resource
                                 'bonus' =>0,
                                 'note' =>  $data['notes'] ?? null,
                                 'type' => 'deposit',
+                                'system_type' => $systemType,
                                 'deposit' => $record->nominal,
                                 'withdraw' => 0,
                             ]);
 
-                            
-                            $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
-
-                            $group->decrement('koin',  $record->nominal);
+                            // Both systems: group and bank saldo increase
                             $group->increment('saldo',  $record->nominal);
+                            $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
+                            // No need to increment bank saldo here because it was already incremented when PendingDepo was created
+                            // Unless is_non_coin_system check was applied there.
+                            // In CreatePendingDepo, I already added if ($group->is_non_coin_system) { $bank->increment('saldo', $data['nominal']); }
 
-                            $koin = -$record->nominal;
+                            if ($systemType === 'coin') {
+                                $group->decrement('koin',  $record->nominal);
 
+                                $koin = -$record->nominal;
 
-                            $history = Koinhistory::create([
-                                'group_id' => $member->group_id,
-                                'keterangan' => 'deposit',
-                                'member_id' => $member->id,
-                                'koin' => $koin,
-                                'saldo' => $group->saldo,
-                                'operator_id' => Auth::id(),
-                                
-                            ]);
+                                $history = Koinhistory::create([
+                                    'group_id' => $member->group_id,
+                                    'keterangan' => 'deposit',
+                                    'member_id' => $member->id,
+                                    'koin' => $koin,
+                                    'saldo' => $group->saldo,
+                                    'operator_id' => Auth::id(),
+                                    
+                                ]);
+                            }
 
                             
 
@@ -234,7 +243,9 @@ class PendingdepoResource extends Resource
                     ->action(function (\App\Models\Pendingdepo $record) {
                         $bank = Bank::where('id', $record->bank_id)->lockForUpdate()->first();
 
-                        $bank->decrement('saldo',  $record->nominal);
+                        if ($record->bank->group->is_non_coin_system) {
+                            $bank->decrement('saldo',  $record->nominal);
+                        }
 
                         $log = Logtransaksi::create([
                             'operator_id' =>  Auth::id(),

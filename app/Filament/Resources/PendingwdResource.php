@@ -173,6 +173,8 @@ class PendingwdResource extends Resource
                             $total = (float) ($record->nominal + $data['biaya_transfer'] ?? 0);
                             
                             $member = Member::find($record->member_id);
+                            $group = $member->group;
+                            $systemType = $group->is_coin_system ? 'coin' : 'non-coin';
 
                              $firstDepo = 'N';
 
@@ -192,15 +194,18 @@ class PendingwdResource extends Resource
                                 'bonus' => 0,
                                 'note' =>  null,
                                 'type' => 'withdraw',
+                                'system_type' => $systemType,
                                 'deposit' => 0,
                                 'withdraw' => $record->nominal,
                             ]);
 
                             
                             $bank = Bank::where('id', $data['wd_bank'])->lockForUpdate()->first();
-
+                            
+                            // Rules: Both systems decrease bank and group saldo
                             $bank->decrement('saldo', $total);
-
+                            // Group saldo already decremented in handleRecordCreation for CreatePendingwd
+                            // But bank decrement is done here at processing time.
 
                             $log = Logtransaksi::create([
                                 'operator_id' =>  $transaction->operator_id,
@@ -241,20 +246,24 @@ class PendingwdResource extends Resource
                     ->action(function (\App\Models\Pendingwd $record) {
                        
                         $group = Group::where('id', $record->operator->group_id)->lockForUpdate()->first();
-                        
-                        $group->decrement('koin',  $record->nominal);
+                        $systemType = $group->is_coin_system ? 'coin' : 'non-coin';
+
+                        // Both: increment group saldo (refund)
                         $group->increment('saldo',  $record->nominal);
 
-                        $history = Koinhistory::create([
-                            'group_id' => $record->operator->group_id,
-                            'keterangan' => 'Delete WD gantung',
-                            'member_id' => $record->member_id,
-                            'koin' => $record->nominal,
-                            'saldo' => $group->saldo,
-                            'operator_id' => Auth::id(),
-                            
-                        ]);
+                        if ($systemType === 'coin') {
+                            $group->decrement('koin',  $record->nominal);
 
+                            $history = Koinhistory::create([
+                                'group_id' => $record->operator->group_id,
+                                'keterangan' => 'Delete WD gantung',
+                                'member_id' => $record->member_id,
+                                'koin' => -$record->nominal, // refunding koin = decrement because WD was increment
+                                'saldo' => $group->saldo,
+                                'operator_id' => Auth::id(),
+                                
+                            ]);
+                        }
                         
                         $record->delete();
 

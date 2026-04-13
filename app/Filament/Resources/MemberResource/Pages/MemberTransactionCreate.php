@@ -39,11 +39,20 @@ class MemberTransactionCreate extends Page
     public ?array $dataStore = [];
     public ?int $operator = 0;
 
+    public ?string $system_type = 'coin';
+
     public function mount(Member $record)
     {
         $this->member = $record;
         $this->type = request()->query('type'); 
         $this->operator =  Auth::id();
+
+        // Detect default system type
+        $group = $this->member->group;
+        if ($group) {
+            if ($group->is_coin_system && !$group->is_non_coin_system) $this->system_type = 'coin';
+            elseif (!$group->is_coin_system && $group->is_non_coin_system) $this->system_type = 'non-coin';
+        }
     }
     
 
@@ -81,6 +90,7 @@ class MemberTransactionCreate extends Page
                 'bonus' => $this->bonus,
                 'note' => $this->note ?? null,
                 'type' => $this->type,
+                'system_type' => $this->system_type,
                 'deposit' => $this->type === 'deposit' ? $this->amount : 0,
                 'withdraw' => $this->type === 'withdraw' ? $this->amount : 0,
             ]);
@@ -89,29 +99,36 @@ class MemberTransactionCreate extends Page
             $group = Group::where('id', $this->member->group_id)->lockForUpdate()->first();
 
             if ($this->type === 'deposit') {
+                // Both: bank and group saldo increase
                 $bank->increment('saldo', $this->total);
-                $group->decrement('koin', $this->total);
                 $group->increment('saldo', $this->total);
 
-                $koin = -$this->total;
+                if ($this->system_type === 'coin') {
+                    $group->decrement('koin', $this->total);
+                    $koin = -$this->total;
+                }
 
             } elseif ($this->type === 'withdraw') {
+                // Both: bank and group saldo decrease
                 $bank->decrement('saldo', $this->total);
-                $group->increment('koin', $this->total);
                 $group->decrement('saldo', $this->total);
-                
-                $koin = $this->total;
+
+                if ($this->system_type === 'coin') {
+                    $group->increment('koin', $this->total);
+                    $koin = $this->total;
+                }
             }
 
-            $history = Koinhistory::create([
-                'group_id' => $this->member->group_id,
-                'keterangan' => $this->type,
-                'member_id' => $this->member->id,
-                'koin' => $koin,
-                'saldo' => $group->saldo,
-                'operator_id' => $this->operator,
-                
-            ]);
+            if ($this->system_type === 'coin') {
+                Koinhistory::create([
+                    'group_id' => $this->member->group_id,
+                    'keterangan' => $this->type,
+                    'member_id' => $this->member->id,
+                    'koin' => $koin ?? 0,
+                    'saldo' => $group->saldo,
+                    'operator_id' => $this->operator,
+                ]);
+            }
 
             $log = Logtransaksi::create([
                 
@@ -143,6 +160,28 @@ class MemberTransactionCreate extends Page
         return [
             Forms\Components\Grid::make(2) // Secara otomatis membuat layout 2 kolom
                 ->schema([
+                    Forms\Components\Select::make('system_type')
+                        ->label('System Type')
+                        ->options(function () {
+                            $group = $this->member->group;
+                            $options = [];
+                            if ($group) {
+                                if ($group->is_coin_system) $options['coin'] = 'Coin System';
+                                if ($group->is_non_coin_system) $options['non-coin'] = 'Non-Coin System';
+                            }
+                            if (empty($options)) $options['coin'] = 'Coin System';
+                            return $options;
+                        })
+                        ->default(function () {
+                            $group = $this->member->group;
+                            if ($group) {
+                                if ($group->is_coin_system && !$group->is_non_coin_system) return 'coin';
+                                if (!$group->is_coin_system && $group->is_non_coin_system) return 'non-coin';
+                            }
+                            return 'coin';
+                        })
+                        ->required()
+                        ->live(),
                     Forms\Components\Select::make('bank_id')
                         ->label('Rekening Depo')
                         ->options(function () {
@@ -153,12 +192,15 @@ class MemberTransactionCreate extends Page
                         ->required(),
                     Forms\Components\TextInput::make('amount')
                         ->numeric()
-                        ->required(),
+                        ->required()
+                        ->live(onBlur: true),
                     Forms\Components\TextInput::make('b_trf')
                         ->numeric()
-                        ->label('Biaya Transfer'),
+                        ->label('Biaya Transfer')
+                        ->live(onBlur: true),
                     Forms\Components\TextInput::make('bonus')
-                        ->numeric(),
+                        ->numeric()
+                        ->live(onBlur: true),
                     Forms\Components\Textarea::make('note')
 
 

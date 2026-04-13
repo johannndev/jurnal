@@ -39,8 +39,9 @@ class CreatePendingDepo extends CreateRecord
             $group = Group::where('id', Auth::user()->group_id)->lockForUpdate()->first();
             $bank = Bank::where('id', $data['bank_id'])->lockForUpdate()->first();
 
-            // Update saldo
+            // Both: Group and Bank saldo increase
             $bank->increment('saldo', $data['nominal']);
+            $group->increment('saldo', $data['nominal']);
 
             // Simpan log transaksi
             Logtransaksi::create([

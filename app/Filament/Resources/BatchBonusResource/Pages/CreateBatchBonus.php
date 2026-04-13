@@ -116,23 +116,26 @@ class CreateBatchBonus extends CreateRecord
 
             // Lock group untuk update koin
             $group = Group::where('id', $this->selectedGroup)->lockForUpdate()->first();
-            $group->decrement('koin', $bonustotal);
 
-            // Insert Koinhistory
-            $koinHistory = [];
-            foreach ($transactionsArray as $row) {
-                $koinHistory[] = [
-                    'group_id' => $row['group_id'],
-                    'keterangan' => 'Bonus '.$data['bonus'],
-                    'member_id' => $row['member_id'],
-                    'koin' => -$row['total'],
-                    'saldo' => $group->koin,
-                    'operator_id' => Auth::id(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+            if ($group->is_coin_system) {
+                $group->decrement('koin', $bonustotal);
+
+                // Insert Koinhistory
+                $koinHistory = [];
+                foreach ($transactionsArray as $row) {
+                    $koinHistory[] = [
+                        'group_id' => $row['group_id'],
+                        'keterangan' => 'Bonus '.$data['bonus'],
+                        'member_id' => $row['member_id'],
+                        'koin' => -$row['total'],
+                        'saldo' => $group->koin,
+                        'operator_id' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                Koinhistory::insert($koinHistory);
             }
-            Koinhistory::insert($koinHistory);
 
         });
 
