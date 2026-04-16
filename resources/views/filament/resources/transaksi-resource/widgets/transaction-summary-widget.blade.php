@@ -78,7 +78,7 @@
                        Total Transaks Tarik Bonus:
                     </div>
                     <div>
-                        {{$totalBonusWd}}
+                        {{ number_format($totalBonusWd) }}
                     </div>
                     <div class="text-right">
                        Player Withdraw:

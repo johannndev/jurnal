@@ -14,71 +14,89 @@ class TransactionSummaryWidget extends Widget
 
     protected function getViewData(): array
     {
-        $startDate = request('tableFilters')['Tanggal']['start_date'] ?? null;
-        $endDate = request('tableFilters')['Tanggal']['end_date'] ?? null;
-        $groupId = Group::getActiveGroupId();
+        $filters = request('tableFilters') ?? [];
 
-        $query = DB::table('transactions');
+        $startDate = $filters['Tanggal']['start_date'] ?? null;
+        $endDate = $filters['Tanggal']['end_date'] ?? null;
+        $groupId = $filters['group_id']['group_id'] ?? Group::getActiveGroupId();
+        $operatorId = $filters['operator_id']['operator_id'] ?? null;
+        $typeFilter = $filters['type']['type'] ?? 'all';
+        $username = $filters['member_search']['username'] ?? null;
 
-        if ($groupId) {
-            $query->where('group_id', $groupId);
+        $query = DB::table('transactions')
+            ->when($groupId, fn ($q) => $q->where('group_id', $groupId))
+            ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate));
+
+        if ($operatorId) {
+            $query->where('operator_id', $operatorId);
         }
 
-        if ($startDate) {
-            $query->whereDate('created_at', '>=', $startDate);
+        // Align filters with strict transaction types
+        if ($typeFilter === 'deposit') {
+            $query->where(function($q) {
+                $q->where('deposit', '>', 0)
+                  ->orWhere('type', 'input-bonus');
+            });
+        } elseif ($typeFilter === 'withdraw') {
+            $query->where(function($q) {
+                $q->where('withdraw', '>', 0)
+                  ->orWhere('type', 'tarik-bonus');
+            });
         }
 
-        if ($endDate) {
-            $query->whereDate('created_at', '<=', $endDate);
+        if ($username) {
+            $query->whereExists(function ($q) use ($username) {
+                $q->select(DB::raw(1))
+                    ->from('members')
+                    ->whereColumn('members.id', 'transactions.member_id')
+                    ->where('members.username', $username);
+            });
         }
 
-        // Audit dd with context
-        $auditQuery = clone $query;
-        $auditData = $auditQuery->select('type', DB::raw('count(*) as count'), DB::raw('sum(bonus) as total_bonus'))
-            ->groupBy('type')
-            ->get();
-        
-        // This will halt execution and show the data in your browser with context
-        dd([
-            'filtered_group_id' => $groupId,
-            'filtered_start_date' => $startDate,
-            'filtered_end_date' => $endDate,
-            'audit_results' => $auditData->toArray()
-        ]);
+        // Audit raw transactions with bonus > 0 for analysis
+        $rawTransactionsWithBonus = (clone $query)->where('bonus', '>', 0)->get();
 
-        $data = $query->selectRaw('
+        $summaryData = $query->selectRaw('
             COUNT(DISTINCT CASE WHEN type = "deposit" THEN member_id END) AS player_depo,
             COUNT(DISTINCT CASE WHEN type = "withdraw" THEN member_id END) AS player_wd,
 
             COUNT(CASE WHEN type = "deposit" THEN 1 END) AS jumlah_deposit,
-            SUM(CASE WHEN type = "deposit" THEN total ELSE 0 END) AS total_deposit,
+            SUM(CASE WHEN type = "deposit" THEN deposit ELSE 0 END) AS total_deposit,
 
-            COUNT(CASE WHEN type = "deposit" AND bonus > 0 THEN 1 END) AS jumlah_bonus_deposit,
-            SUM(CASE WHEN type = "deposit" AND bonus > 0 THEN bonus ELSE 0 END) AS total_bonus_deposit,
+            COUNT(CASE WHEN type = "input-bonus" THEN 1 END) AS jumlah_bonus_deposit,
+            SUM(CASE WHEN type = "input-bonus" THEN bonus ELSE 0 END) AS total_bonus_deposit,
 
-            COUNT(CASE WHEN type = "withdraw" AND bonus > 0 THEN 1 END) AS jumlah_bonus_withdraw,
-            SUM(CASE WHEN type = "withdraw" AND bonus > 0 THEN bonus ELSE 0 END) AS total_bonus_withdraw,
+            COUNT(CASE WHEN type = "tarik-bonus" THEN 1 END) AS jumlah_bonus_withdraw,
+            SUM(CASE WHEN type = "tarik-bonus" THEN bonus ELSE 0 END) AS total_bonus_withdraw,
 
             COUNT(CASE WHEN type = "withdraw" THEN 1 END) AS jumlah_withdraw,
-            SUM(CASE WHEN type = "withdraw" THEN total ELSE 0 END) AS total_withdraw,
+            SUM(CASE WHEN type = "withdraw" THEN withdraw ELSE 0 END) AS total_withdraw,
 
             COUNT(CASE WHEN type = "deposit" AND first_depo = "Y" THEN 1 END) AS jumlah_first_deposit,
-            SUM(CASE WHEN type = "deposit" AND first_depo = "Y" THEN total ELSE 0 END) AS total_first_deposit
+            SUM(CASE WHEN type = "deposit" AND first_depo = "Y" THEN deposit ELSE 0 END) AS total_first_deposit
         ')->first();
 
+        // Audit dd
+        // dd([
+        //     'STRICT_TYPE_ONLY' => 'Bonus calculations strictly use type check only',
+        //     'RAW_DATABASE_RECORDS_WITH_BONUS' => $rawTransactionsWithBonus->toArray(),
+        //     'SUMMARY_CALCULATION' => $summaryData
+        // ]);
+
         return [
-            'jumlahDeposit' => $data->jumlah_deposit,
-            'totalDeposit' => $data->total_deposit,
-            'jumlahBonusDepo' => $data->jumlah_bonus_deposit,
-            'totalBonusDepo' => $data->total_bonus_deposit,
-            'jumlahBonusWd' => $data->jumlah_bonus_withdraw,
-            'totalBonusWd' => $data->total_bonus_withdraw,
-            'jumlahWithdraw' => $data->jumlah_withdraw,
-            'totalWithdraw' => $data->total_withdraw,
-            'playerDepo' => $data->player_depo,
-            'playerWd' => $data->player_wd,
-            'jumlahFirstDepo' => $data->jumlah_first_deposit,
-            'totalFirstDepo' => $data->total_first_deposit,
+            'jumlahDeposit' => $summaryData->jumlah_deposit,
+            'totalDeposit' => $summaryData->total_deposit,
+            'jumlahBonusDepo' => $summaryData->jumlah_bonus_deposit,
+            'totalBonusDepo' => $summaryData->total_bonus_deposit,
+            'jumlahBonusWd' => $summaryData->jumlah_bonus_withdraw,
+            'totalBonusWd' => $summaryData->total_bonus_withdraw,
+            'jumlahWithdraw' => $summaryData->jumlah_withdraw,
+            'totalWithdraw' => $summaryData->total_withdraw,
+            'playerDepo' => $summaryData->player_depo,
+            'playerWd' => $summaryData->player_wd,
+            'jumlahFirstDepo' => $summaryData->jumlah_first_deposit,
+            'totalFirstDepo' => $summaryData->total_first_deposit,
         ];  
     }
 }

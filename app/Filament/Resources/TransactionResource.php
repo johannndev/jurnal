@@ -92,6 +92,8 @@ class TransactionResource extends Resource
                         'deposit' => 'success',
                         'withdraw' => 'danger',
                         'bonus' => 'warning',
+                        'input-bonus' => 'warning',
+                        'tarik-bonus' => 'info',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('system_type')
@@ -197,6 +199,14 @@ class TransactionResource extends Resource
                             ->exists()
                     )
                     ->form([
+                        Forms\Components\Select::make('bonus_type')
+                            ->label('Tipe Bonus')
+                            ->options([
+                                'input-bonus' => 'Input Bonus',
+                                'tarik-bonus' => 'Tarik Bonus',
+                            ])
+                            ->default('input-bonus')
+                            ->required(),
                         Forms\Components\TextInput::make('amount')
                             ->label('Jumlah Bonus')
                             ->numeric()
@@ -372,18 +382,26 @@ class TransactionResource extends Resource
     protected static function executeBonusKoin(Member $member, array $data): void
     {
         $amount = (float) $data['amount'];
+        $bonusType = $data['bonus_type'] ?? 'input-bonus';
 
-        DB::transaction(function () use ($member, $data, $amount) {
+        DB::transaction(function () use ($member, $data, $amount, $bonusType) {
             $group = Group::where('id', $member->group_id)->lockForUpdate()->first();
             
-            // Bonus is ONLY for coin system based on rule
-            $group->decrement('koin', $amount);
+            if ($bonusType === 'input-bonus') {
+                $group->decrement('koin', $amount);
+                $koinAmount = -$amount;
+                $keterangan = 'input bonus';
+            } else {
+                $group->increment('koin', $amount);
+                $koinAmount = $amount;
+                $keterangan = 'tarik bonus';
+            }
 
             Koinhistory::create([
                 'group_id' => $member->group_id,
-                'keterangan' => 'bonus',
+                'keterangan' => $keterangan,
                 'member_id' => $member->id,
-                'koin' => -$amount,
+                'koin' => $koinAmount,
                 'saldo' => $group->saldo,
                 'operator_id' => Auth::id(),
             ]);
@@ -393,19 +411,19 @@ class TransactionResource extends Resource
                 'operator_id' => Auth::id(),
                 'member_id' => $member->id,
                 'first_depo' => 'X',
-                'type' => 'bonus',
+                'type' => $bonusType,
                 'system_type' => 'coin',
                 'bonus' => $amount,
                 'total' => $amount,
                 'deposit' => 0,
                 'withdraw' => 0,
                 'bank_id' => null,
-                'note' => $data['note'] ?? 'Bonus Koin',
+                'note' => $data['note'] ?? ucfirst(str_replace('-', ' ', $bonusType)),
             ]);
         });
 
         Notification::make()
-            ->title('Bonus koin berhasil ditambahkan!')
+            ->title('Bonus koin berhasil diproses!')
             ->success()
             ->send();
     }
