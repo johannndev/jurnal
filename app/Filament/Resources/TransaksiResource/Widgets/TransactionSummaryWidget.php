@@ -32,6 +32,20 @@ class TransactionSummaryWidget extends Widget
             $query->whereDate('created_at', '<=', $endDate);
         }
 
+        // Audit dd with context
+        $auditQuery = clone $query;
+        $auditData = $auditQuery->select('type', DB::raw('count(*) as count'), DB::raw('sum(bonus) as total_bonus'))
+            ->groupBy('type')
+            ->get();
+        
+        // This will halt execution and show the data in your browser with context
+        dd([
+            'filtered_group_id' => $groupId,
+            'filtered_start_date' => $startDate,
+            'filtered_end_date' => $endDate,
+            'audit_results' => $auditData->toArray()
+        ]);
+
         $data = $query->selectRaw('
             COUNT(DISTINCT CASE WHEN type = "deposit" THEN member_id END) AS player_depo,
             COUNT(DISTINCT CASE WHEN type = "withdraw" THEN member_id END) AS player_wd,
