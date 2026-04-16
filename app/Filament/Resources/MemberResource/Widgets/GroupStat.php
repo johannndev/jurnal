@@ -17,10 +17,14 @@ class GroupStat extends BaseWidget
     
     protected function getStats(): array
     {
-        $gid = $this->groupId ?? Group::getActiveGroupId();
-        $qs = request()->has('group_id') ? '?group_id=' . $this->groupId : '';
+        $gid = Group::getActiveGroupId();
+        $qs = '?group_id=' . $gid;
         
         $stat = Group::find($gid);
+
+        if (!$stat) {
+            return [];
+        }
 
         $stats = [];
 

@@ -27,14 +27,17 @@ class KoinHistory extends Page implements Tables\Contracts\HasTable
     protected function getTableQuery()
     {
         $user = auth()->user();
-        $groupId = request()->get('group_id',1);
+        
+        $gd = Group::where('is_default', 1)->first();
+        $dft = $gd ? $gd->id : 1;
+
+        $groupId = request()->get('group_id', $dft);
 
         return ModelsKoinhistory::query()
             ->when($user && $user->group_id > 0, fn ($q) => $q->where('group_id', $user->group_id))
-            ->when($user && $user->group_id == 0 && $groupId, fn ($q) => $q->where('group_id', $groupId))
-            ->when($user && $user->group_id == 0 && !$groupId, fn ($q) => $q->where('group_id', 1)) // default untuk admin
+            ->when($user && $user->group_id == 0, fn ($q) => $q->where('group_id', $groupId))
             ->orderBy('created_at', 'desc');
-        }
+    }
 
     protected function getTableFilters(): array
     {
