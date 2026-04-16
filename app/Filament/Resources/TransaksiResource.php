@@ -68,6 +68,7 @@ class TransaksiResource extends Resource
                 TextColumn::make('deposit')->label('Deposit'),
                 TextColumn::make('withdraw')->label('Withdraw'),
                 TextColumn::make('fee')->label('Biaya Trf'),
+                TextColumn::make('bonus')->label('Bonus')->numeric(),
                 TextColumn::make('note')->label('Keterangan'),
                 TextColumn::make('rekening_deposit')
                     ->label('Rekening Deposit')
